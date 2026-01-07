@@ -740,7 +740,7 @@ function SuperBowlMatchup({ afcChamp, nfcChamp, winnerId, onWinnerChange, locked
   const disabled = !afcChamp || !nfcChamp;
 
   return (
-    <div className={`w-full bg-gray-100 dark:bg-gray-700 rounded p-1 space-y-0.5 ${disabled ? 'opacity-50' : ''} ${locked ? 'ring-1 ring-green-500' : ''}`}>
+    <div className={`w-full bg-yellow-50 dark:bg-yellow-900/20 rounded p-1 space-y-0.5 ${disabled ? 'opacity-50' : ''} ${locked ? 'ring-1 ring-green-500' : ''}`}>
       <TeamSlot
         teamWithSeed={nfcChamp}
         isWinner={winnerId === nfcChamp?.team.id}

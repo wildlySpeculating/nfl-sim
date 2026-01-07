@@ -1,4 +1,4 @@
-import type { Team, Game, GameSelection, TeamStanding, Conference, Division } from '@/types';
+import type { Team, Game, GameSelection, TeamStanding, Conference, Division, LastFiveGame } from '@/types';
 import { getTeamsByDivision, getTeamsByConference } from '@/data/teams';
 
 interface TeamRecord {
@@ -575,8 +575,8 @@ function createStanding(
   seed: number | null,
   clinched: 'division' | 'playoff' | 'bye' | null
 ): TeamStanding {
-  // Calculate streak and last 5 (simplified)
-  const lastFive: ('W' | 'L' | 'T')[] = [];
+  // lastFive is calculated separately in useStandings
+  const lastFive: LastFiveGame[] = [];
 
   return {
     team,

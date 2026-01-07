@@ -390,12 +390,25 @@ export function calculateStreak(
   return streakType ? `${streakType}${streakCount}` : '-';
 }
 
-// Calculate last 5 games
+// Calculate last 5 games with full details
+export interface LastFiveGame {
+  result: 'W' | 'L' | 'T';
+  teamName: string;
+  teamScore: number;
+  opponentName: string;
+  opponentScore: number;
+  week: number;
+  isProjected: boolean;
+}
+
 export function calculateLastFive(
   teamId: string,
   games: Game[],
   selections: Record<string, GameSelection>
-): ('W' | 'L' | 'T')[] {
+): LastFiveGame[] {
+  const team = teams.find(t => t.id === teamId);
+  if (!team) return [];
+
   const teamGames = games
     .filter(g => (g.homeTeam.id === teamId || g.awayTeam.id === teamId) &&
                  (g.status === 'final' || selections[g.id]))
@@ -404,17 +417,51 @@ export function calculateLastFive(
 
   return teamGames.map(game => {
     const isHome = game.homeTeam.id === teamId;
+    const opponent = isHome ? game.awayTeam : game.homeTeam;
+    const isProjected = game.status !== 'final';
+
+    let result: 'W' | 'L' | 'T';
+    let teamScore: number;
+    let opponentScore: number;
 
     if (game.status === 'final') {
-      const homeWon = (game.homeScore ?? 0) > (game.awayScore ?? 0);
-      const tied = game.homeScore === game.awayScore;
-      if (tied) return 'T';
-      return isHome ? (homeWon ? 'W' : 'L') : (homeWon ? 'L' : 'W');
+      const homeScore = game.homeScore ?? 0;
+      const awayScore = game.awayScore ?? 0;
+      teamScore = isHome ? homeScore : awayScore;
+      opponentScore = isHome ? awayScore : homeScore;
+
+      if (homeScore === awayScore) {
+        result = 'T';
+      } else {
+        const homeWon = homeScore > awayScore;
+        result = isHome ? (homeWon ? 'W' : 'L') : (homeWon ? 'L' : 'W');
+      }
     } else {
+      // Projected game based on selection
       const selection = selections[game.id];
-      if (selection === 'tie') return 'T';
-      if (selection === 'home') return isHome ? 'W' : 'L';
-      return isHome ? 'L' : 'W';
+      if (selection === 'tie') {
+        result = 'T';
+        teamScore = 0;
+        opponentScore = 0;
+      } else if (selection === 'home') {
+        result = isHome ? 'W' : 'L';
+        teamScore = isHome ? 1 : 0;
+        opponentScore = isHome ? 0 : 1;
+      } else {
+        result = isHome ? 'L' : 'W';
+        teamScore = isHome ? 0 : 1;
+        opponentScore = isHome ? 1 : 0;
+      }
     }
+
+    return {
+      result,
+      teamName: team.name,
+      teamScore,
+      opponentName: opponent.name,
+      opponentScore,
+      week: game.week,
+      isProjected,
+    };
   });
 }

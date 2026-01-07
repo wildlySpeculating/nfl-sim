@@ -59,7 +59,7 @@ export interface TeamStanding {
   pointsFor: number;
   pointsAgainst: number;
   streak: string;
-  lastFive: ('W' | 'L' | 'T')[];
+  lastFive: LastFiveGame[];
   isEliminated: boolean;
   clinched: 'division' | 'playoff' | 'bye' | null;
   seed: number | null;
@@ -71,6 +71,17 @@ export interface MagicNumber {
   division: number | null;
   bye: number | null;
   scenarios: string[];
+}
+
+// Last 5 games result with details
+export interface LastFiveGame {
+  result: 'W' | 'L' | 'T';
+  teamName: string;
+  teamScore: number;
+  opponentName: string;
+  opponentScore: number;
+  week: number;
+  isProjected: boolean; // true if based on user selection, false if final
 }
 
 // Playoff bracket types

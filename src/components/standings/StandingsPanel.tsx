@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { TeamStanding } from '@/types';
+import type { TeamStanding, LastFiveGame } from '@/types';
 import { formatRecord, formatDivisionRecord, formatPointDiff } from '@/hooks/useStandings';
 
 interface StandingsPanelProps {
@@ -225,24 +225,85 @@ function TeamRow({ standing, rank, showPlayoffLine }: TeamRowProps) {
       {/* Last 5 */}
       <div className="col-span-2 flex justify-center gap-0.5">
         {lastFive && lastFive.length > 0 ? (
-          lastFive.map((result, i) => (
-            <span
-              key={i}
-              className={`w-3 h-3 rounded-full text-[8px] font-bold flex items-center justify-center ${
-                result === 'W'
-                  ? 'bg-green-500 text-white'
-                  : result === 'L'
-                  ? 'bg-red-500 text-white'
-                  : 'bg-gray-400 text-white'
-              }`}
-            >
-              {result}
-            </span>
+          lastFive.map((game, i) => (
+            <LastFiveIndicator key={i} game={game} />
           ))
         ) : (
           <span className="text-[10px] text-gray-400">-</span>
         )}
       </div>
     </motion.div>
+  );
+}
+
+interface LastFiveIndicatorProps {
+  game: LastFiveGame;
+}
+
+function LastFiveIndicator({ game }: LastFiveIndicatorProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        tooltipRef.current &&
+        buttonRef.current &&
+        !tooltipRef.current.contains(event.target as Node) &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setShowTooltip(false);
+      }
+    }
+
+    if (showTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showTooltip]);
+
+  const formatScore = () => {
+    if (game.isProjected) {
+      return `Wk ${game.week}: vs ${game.opponentName} (projected)`;
+    }
+    return `Wk ${game.week}: ${game.teamName} ${game.teamScore} - ${game.opponentName} ${game.opponentScore}`;
+  };
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => setShowTooltip(!showTooltip)}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className={`w-3 h-3 rounded-full text-[8px] font-bold flex items-center justify-center cursor-pointer transition-transform hover:scale-125 ${
+          game.result === 'W'
+            ? 'bg-green-500 text-white'
+            : game.result === 'L'
+            ? 'bg-red-500 text-white'
+            : 'bg-gray-400 text-white'
+        } ${game.isProjected ? 'ring-1 ring-offset-1 ring-gray-400' : ''}`}
+      >
+        {game.result}
+      </button>
+
+      <AnimatePresence>
+        {showTooltip && (
+          <motion.div
+            ref={tooltipRef}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[10px] font-medium text-white bg-gray-900 dark:bg-gray-700 rounded shadow-lg whitespace-nowrap pointer-events-none"
+          >
+            {formatScore()}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

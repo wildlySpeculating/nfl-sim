@@ -249,9 +249,9 @@ export function PlayoffBracket({
   }, [playoffGames, afcSeeds, nfcSeeds, getPlayoffResults]);
 
   return (
-    <div className="p-2">
-      {/* Desktop layout - horizontal with Super Bowl in center */}
-      <div className="hidden md:block">
+    <div className="p-2 @container">
+      {/* Desktop layout - horizontal with Super Bowl in center (only when container is wide enough) */}
+      <div className="hidden @[850px]:block">
         <div className="flex justify-between items-start">
           {/* NFC Side (left) */}
           <div className="flex-1">
@@ -300,8 +300,8 @@ export function PlayoffBracket({
         </div>
       </div>
 
-      {/* Mobile layout - stacked vertically */}
-      <div className="md:hidden space-y-4">
+      {/* Stacked layout - for narrower containers (mobile, tablet, narrow panels) */}
+      <div className="@[850px]:hidden space-y-4">
         {/* NFC Bracket */}
         <div>
           <div className="flex justify-center mb-2">

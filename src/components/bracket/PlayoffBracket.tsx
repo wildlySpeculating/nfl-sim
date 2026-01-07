@@ -275,7 +275,7 @@ export function PlayoffBracket({
         </div>
 
         {/* Super Bowl - 1 column */}
-        <div className="col-span-1 flex flex-col items-center justify-center" style={{ marginTop: '80px' }}>
+        <div className="col-span-1 flex flex-col justify-center" style={{ marginTop: '80px' }}>
           <SuperBowlHeader />
           <SuperBowlMatchup
             afcChamp={afcBracket.champion}
@@ -318,7 +318,7 @@ export function PlayoffBracket({
 
         {/* Super Bowl - 1/3 width, right-aligned */}
         <div className="flex justify-end">
-          <div className="w-1/3 flex flex-col items-center">
+          <div className="w-1/3 flex flex-col">
             <SuperBowlHeader />
             <SuperBowlMatchup
               afcChamp={afcBracket.champion}
@@ -740,7 +740,7 @@ function SuperBowlMatchup({ afcChamp, nfcChamp, winnerId, onWinnerChange, locked
   const disabled = !afcChamp || !nfcChamp;
 
   return (
-    <div className={`bg-gray-100 dark:bg-gray-700 rounded p-1 space-y-0.5 ${disabled ? 'opacity-50' : ''} ${locked ? 'ring-1 ring-green-500' : ''}`}>
+    <div className={`w-full bg-gray-100 dark:bg-gray-700 rounded p-1 space-y-0.5 ${disabled ? 'opacity-50' : ''} ${locked ? 'ring-1 ring-green-500' : ''}`}>
       <TeamSlot
         teamWithSeed={nfcChamp}
         isWinner={winnerId === nfcChamp?.team.id}

@@ -328,27 +328,93 @@ function calculateBracket(
   // Check if all wild card games are decided
   const allWildCardDecided = wildCardWinners.every(w => w !== null);
 
-  // Divisional matchups - only show concrete matchups when wild card is complete
+  // Divisional matchups - show partial reseeding as wild card winners are determined
+  // Matchup 0: 1 seed vs lowest remaining seed
+  // Matchup 1: 2nd highest vs 3rd highest (the middle two)
   let divisionalMatchups: [TeamWithSeed | null, TeamWithSeed | null][] = [
-    [null, null],
+    [seed1, null],  // 1 seed always in matchup 0
     [null, null],
   ];
 
   if (allWildCardDecided && seed1) {
-    // Reseed: sort all 4 teams (1 seed + 3 wild card winners) by seed
+    // All wild card games decided - full reseeding
     const divisionalTeams = [seed1, ...wildCardWinners.filter(Boolean) as TeamWithSeed[]]
       .sort((a, b) => a.seed - b.seed);
 
-    // Highest vs lowest, second vs third
-    // Matchup 0: 1 seed vs lowest remaining (for top half of bracket)
-    // Matchup 1: 2nd highest vs 3rd highest (for bottom half)
     divisionalMatchups = [
       [divisionalTeams[0], divisionalTeams[3]], // 1 vs lowest
       [divisionalTeams[1], divisionalTeams[2]], // 2nd vs 3rd
     ];
   } else if (seed1) {
-    // Show 1 seed waiting, other slot TBD
-    divisionalMatchups[0] = [seed1, null];
+    // For each decided winner, determine their guaranteed position among WC winners:
+    // - 1st (highest): matchup 1 slot 0 (home/top)
+    // - 2nd (middle): matchup 1 slot 1 (away/bottom)
+    // - 3rd (lowest): matchup 0 slot 1 (vs 1 seed, away/bottom)
+    //
+    // A winner is guaranteed a position if their seed is higher/lower than
+    // all other possible outcomes (both undecided games AND other decided winners)
+
+    const decidedWinners = wildCardWinners.filter(Boolean) as TeamWithSeed[];
+
+    // Get all possible seeds from undecided games
+    const undecidedRanges: { min: number; max: number }[] = [];
+    if (!wildCardWinners[0]) undecidedRanges.push({ min: 2, max: 7 }); // 2v7 undecided
+    if (!wildCardWinners[1]) undecidedRanges.push({ min: 3, max: 6 }); // 3v6 undecided
+    if (!wildCardWinners[2]) undecidedRanges.push({ min: 4, max: 5 }); // 4v5 undecided
+
+    // For each decided winner, count how many "slots" are guaranteed above/below them
+    // A slot is above if its MAX possible seed < winner's seed (definitely higher ranked)
+    // A slot is below if its MIN possible seed > winner's seed (definitely lower ranked)
+
+    const getGuaranteedPosition = (winner: TeamWithSeed): 1 | 2 | 3 | null => {
+      let definitelyAbove = 0; // slots guaranteed to have higher rank (lower seed number)
+      let definitelyBelow = 0; // slots guaranteed to have lower rank (higher seed number)
+
+      // Check against undecided games
+      for (const range of undecidedRanges) {
+        if (range.max < winner.seed) {
+          // This undecided game will definitely produce someone higher ranked
+          definitelyAbove++;
+        } else if (range.min > winner.seed) {
+          // This undecided game will definitely produce someone lower ranked
+          definitelyBelow++;
+        }
+      }
+
+      // Check against other decided winners
+      for (const other of decidedWinners) {
+        if (other === winner) continue;
+        if (other.seed < winner.seed) {
+          definitelyAbove++;
+        } else if (other.seed > winner.seed) {
+          definitelyBelow++;
+        }
+      }
+
+      // Determine position based on guaranteed counts
+      // Position 1 (highest): no one definitely above
+      // Position 3 (lowest): no one definitely below
+      // Position 2 (middle): exactly 1 above and 1 below
+      const totalSlots = undecidedRanges.length + decidedWinners.length - 1; // -1 for self
+
+      if (definitelyAbove === 0) return 1; // Guaranteed highest
+      if (definitelyBelow === 0) return 3; // Guaranteed lowest
+      if (definitelyAbove >= 1 && definitelyBelow >= 1) return 2; // Guaranteed middle
+
+      return null; // Position depends on undecided outcomes
+    };
+
+    // Place each decided winner in their guaranteed position
+    for (const winner of decidedWinners) {
+      const position = getGuaranteedPosition(winner);
+      if (position === 1) {
+        divisionalMatchups[1][0] = winner; // Highest WC → matchup 1 slot 0 (home)
+      } else if (position === 2) {
+        divisionalMatchups[1][1] = winner; // Middle → matchup 1 slot 1 (away)
+      } else if (position === 3) {
+        divisionalMatchups[0][1] = winner; // Lowest → matchup 0 slot 1 (vs 1 seed)
+      }
+    }
   }
 
   // Get divisional winners
@@ -360,15 +426,45 @@ function calculateBracket(
     return null;
   });
 
-  // Championship matchup - only show when both divisional games decided
+  // Championship matchup - show divisional winners as they're decided
+  // Higher seed = home (slot 0/top), Lower seed = away (slot 1/bottom)
   const allDivisionalDecided = divisionalWinners.every(w => w !== null);
   let championshipMatchup: [TeamWithSeed | null, TeamWithSeed | null] = [null, null];
 
   if (allDivisionalDecided) {
-    // Reseed for championship: higher seed vs lower seed
+    // Both divisional games decided - reseed: higher seed (top) vs lower seed (bottom)
     const champTeams = (divisionalWinners.filter(Boolean) as TeamWithSeed[])
       .sort((a, b) => a.seed - b.seed);
     championshipMatchup = [champTeams[0] || null, champTeams[1] || null];
+  } else {
+    // Apply same logic: if a winner is guaranteed highest or lowest, place them
+    const decidedDivWinners = divisionalWinners.filter(Boolean) as TeamWithSeed[];
+
+    // Get possible seeds from undecided divisional matchups
+    const undecidedDivSeeds: number[] = [];
+    if (!divisionalWinners[0]) {
+      // Matchup 0 undecided - possible winners are whoever is in that matchup
+      if (divisionalMatchups[0][0]) undecidedDivSeeds.push(divisionalMatchups[0][0].seed);
+      if (divisionalMatchups[0][1]) undecidedDivSeeds.push(divisionalMatchups[0][1].seed);
+    }
+    if (!divisionalWinners[1]) {
+      if (divisionalMatchups[1][0]) undecidedDivSeeds.push(divisionalMatchups[1][0].seed);
+      if (divisionalMatchups[1][1]) undecidedDivSeeds.push(divisionalMatchups[1][1].seed);
+    }
+
+    const minUndecidedDiv = undecidedDivSeeds.length > 0 ? Math.min(...undecidedDivSeeds) : Infinity;
+    const maxUndecidedDiv = undecidedDivSeeds.length > 0 ? Math.max(...undecidedDivSeeds) : -Infinity;
+
+    for (const winner of decidedDivWinners) {
+      if (winner.seed < minUndecidedDiv) {
+        // Guaranteed highest seed - goes to slot 0 (home/top)
+        championshipMatchup[0] = winner;
+      } else if (winner.seed > maxUndecidedDiv) {
+        // Guaranteed lowest seed - goes to slot 1 (away/bottom)
+        championshipMatchup[1] = winner;
+      }
+      // If in between, position depends on other matchup result
+    }
   }
 
   // Champion

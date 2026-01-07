@@ -733,21 +733,9 @@ function SuperBowlMatchup({ afcChamp, nfcChamp, winnerId, onWinnerChange, locked
   };
 
   const disabled = !afcChamp || !nfcChamp;
-  const winner = winnerId
-    ? (afcChamp?.team.id === winnerId ? afcChamp : nfcChamp?.team.id === winnerId ? nfcChamp : null)
-    : null;
 
   return (
-    <div className={`bg-gradient-to-b from-yellow-100 to-yellow-200 dark:from-yellow-900/40 dark:to-yellow-800/40 rounded-lg p-2 space-y-1 min-w-[110px] ${disabled ? 'opacity-50' : ''} ${locked ? 'ring-1 ring-green-500' : ''}`}>
-      <TeamSlot
-        teamWithSeed={afcChamp}
-        isWinner={winnerId === afcChamp?.team.id}
-        isLoser={winnerId !== null && winnerId !== afcChamp?.team.id}
-        onClick={() => handleClick(afcChamp)}
-        disabled={disabled}
-        locked={locked}
-      />
-      <div className="text-center text-[10px] text-gray-500 font-medium">vs</div>
+    <div className={`bg-gray-100 dark:bg-gray-700 rounded p-1 space-y-0.5 ${disabled ? 'opacity-50' : ''} ${locked ? 'ring-1 ring-green-500' : ''}`}>
       <TeamSlot
         teamWithSeed={nfcChamp}
         isWinner={winnerId === nfcChamp?.team.id}
@@ -756,13 +744,14 @@ function SuperBowlMatchup({ afcChamp, nfcChamp, winnerId, onWinnerChange, locked
         disabled={disabled}
         locked={locked}
       />
-      {winner && (
-        <div className="text-center pt-1 border-t border-yellow-300 dark:border-yellow-700">
-          <span className="text-xs font-bold text-yellow-700 dark:text-yellow-300">
-            Champion
-          </span>
-        </div>
-      )}
+      <TeamSlot
+        teamWithSeed={afcChamp}
+        isWinner={winnerId === afcChamp?.team.id}
+        isLoser={winnerId !== null && winnerId !== afcChamp?.team.id}
+        onClick={() => handleClick(afcChamp)}
+        disabled={disabled}
+        locked={locked}
+      />
     </div>
   );
 }

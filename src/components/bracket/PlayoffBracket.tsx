@@ -274,8 +274,8 @@ export function PlayoffBracket({
           />
         </div>
 
-        {/* Super Bowl - 1 column */}
-        <div className="col-span-1 flex flex-col justify-start pt-0">
+        {/* Super Bowl - 1 column, aligned with Divisional round */}
+        <div className="col-span-1 flex flex-col justify-start mt-[52px]">
           <SuperBowlHeader />
           <SuperBowlMatchup
             afcChamp={afcBracket.champion}

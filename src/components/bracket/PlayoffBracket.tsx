@@ -251,7 +251,7 @@ export function PlayoffBracket({
   const SuperBowlHeader = () => (
     <div className="flex items-center justify-center gap-1 text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
       <span>Super</span>
-      <img src="https://a.espncdn.com/i/teamlogos/nfl/500/nfl.png" alt="NFL" className="h-4 w-4 object-contain" />
+      <img src="https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png" alt="NFL" className="h-4 w-4 object-contain" />
       <span>Bowl</span>
     </div>
   );
@@ -314,7 +314,7 @@ export function PlayoffBracket({
         </div>
 
         {/* Super Bowl */}
-        <div className="flex flex-col items-center py-2">
+        <div className="flex flex-col items-end py-2 pr-2">
           <SuperBowlHeader />
           <SuperBowlMatchup
             afcChamp={afcBracket.champion}

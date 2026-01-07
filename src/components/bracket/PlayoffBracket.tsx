@@ -249,20 +249,21 @@ export function PlayoffBracket({
   }, [playoffGames, afcSeeds, nfcSeeds, getPlayoffResults]);
 
   return (
-    <div className="p-2 overflow-x-auto">
-      <div className="min-w-[900px]">
+    <div className="p-2">
+      {/* Desktop layout - horizontal with Super Bowl in center */}
+      <div className="hidden md:block">
         <div className="flex justify-between items-start">
-          {/* AFC Side */}
+          {/* NFC Side (left) */}
           <div className="flex-1">
             <div className="flex justify-center mb-2">
-              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/afc.png" alt="AFC" className="h-6 object-contain" />
+              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/nfc.png" alt="NFC" className="h-6 object-contain" />
             </div>
             <ConferenceBracket
-              bracket={afcBracket}
-              picks={mergedAfcPicks}
-              lockedGames={getLockedGames.afc}
+              bracket={nfcBracket}
+              picks={mergedNfcPicks}
+              lockedGames={getLockedGames.nfc}
               onWinnerChange={(round, index, winnerId) =>
-                onPlayoffWinnerChange('afc', round, index, winnerId)
+                onPlayoffWinnerChange('nfc', round, index, winnerId)
               }
             />
           </div>
@@ -281,11 +282,32 @@ export function PlayoffBracket({
             />
           </div>
 
-          {/* NFC Side */}
+          {/* AFC Side (right) */}
           <div className="flex-1">
             <div className="flex justify-center mb-2">
-              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/nfc.png" alt="NFC" className="h-6 object-contain" />
+              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/afc.png" alt="AFC" className="h-6 object-contain" />
             </div>
+            <ConferenceBracket
+              bracket={afcBracket}
+              picks={mergedAfcPicks}
+              lockedGames={getLockedGames.afc}
+              onWinnerChange={(round, index, winnerId) =>
+                onPlayoffWinnerChange('afc', round, index, winnerId)
+              }
+              reverse
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile layout - stacked vertically */}
+      <div className="md:hidden space-y-4">
+        {/* NFC Bracket */}
+        <div>
+          <div className="flex justify-center mb-2">
+            <img src="https://a.espncdn.com/i/teamlogos/nfl/500/nfc.png" alt="NFC" className="h-6 object-contain" />
+          </div>
+          <div className="overflow-x-auto">
             <ConferenceBracket
               bracket={nfcBracket}
               picks={mergedNfcPicks}
@@ -293,7 +315,37 @@ export function PlayoffBracket({
               onWinnerChange={(round, index, winnerId) =>
                 onPlayoffWinnerChange('nfc', round, index, winnerId)
               }
-              reverse
+            />
+          </div>
+        </div>
+
+        {/* Super Bowl */}
+        <div className="flex flex-col items-center py-2">
+          <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
+            Super Bowl
+          </div>
+          <SuperBowlMatchup
+            afcChamp={afcBracket.champion}
+            nfcChamp={nfcBracket.champion}
+            winnerId={mergedSuperBowlWinner}
+            onWinnerChange={onSuperBowlWinnerChange}
+            locked={getLockedGames.superBowl}
+          />
+        </div>
+
+        {/* AFC Bracket */}
+        <div>
+          <div className="flex justify-center mb-2">
+            <img src="https://a.espncdn.com/i/teamlogos/nfl/500/afc.png" alt="AFC" className="h-6 object-contain" />
+          </div>
+          <div className="overflow-x-auto">
+            <ConferenceBracket
+              bracket={afcBracket}
+              picks={mergedAfcPicks}
+              lockedGames={getLockedGames.afc}
+              onWinnerChange={(round, index, winnerId) =>
+                onPlayoffWinnerChange('afc', round, index, winnerId)
+              }
             />
           </div>
         </div>

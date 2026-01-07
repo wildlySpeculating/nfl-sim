@@ -259,9 +259,10 @@ export function PlayoffBracket({
   return (
     <div className="p-2 @container">
       {/* Desktop layout - horizontal with Super Bowl in center (only when container is wide enough) */}
-      <div className="hidden @[850px]:block">
-        <div className="flex justify-between items-start">
-          {/* NFC Side (left) */}
+      {/* 7 columns total: 3 NFC rounds + 1 Super Bowl + 3 AFC rounds */}
+      <div className="hidden @[850px]:grid grid-cols-7 gap-3">
+        {/* NFC Side (left) - 3 columns */}
+        <div className="col-span-3">
           <ConferenceBracket
             bracket={nfcBracket}
             picks={mergedNfcPicks}
@@ -271,20 +272,22 @@ export function PlayoffBracket({
               onPlayoffWinnerChange('nfc', round, index, winnerId)
             }
           />
+        </div>
 
-          {/* Super Bowl */}
-          <div className="flex flex-col items-center justify-center px-4" style={{ marginTop: '80px' }}>
-            <SuperBowlHeader />
-            <SuperBowlMatchup
-              afcChamp={afcBracket.champion}
-              nfcChamp={nfcBracket.champion}
-              winnerId={mergedSuperBowlWinner}
-              onWinnerChange={onSuperBowlWinnerChange}
-              locked={getLockedGames.superBowl}
-            />
-          </div>
+        {/* Super Bowl - 1 column */}
+        <div className="col-span-1 flex flex-col items-center justify-center" style={{ marginTop: '80px' }}>
+          <SuperBowlHeader />
+          <SuperBowlMatchup
+            afcChamp={afcBracket.champion}
+            nfcChamp={nfcBracket.champion}
+            winnerId={mergedSuperBowlWinner}
+            onWinnerChange={onSuperBowlWinnerChange}
+            locked={getLockedGames.superBowl}
+          />
+        </div>
 
-          {/* AFC Side (right) */}
+        {/* AFC Side (right) - 3 columns */}
+        <div className="col-span-3">
           <ConferenceBracket
             bracket={afcBracket}
             picks={mergedAfcPicks}
@@ -313,16 +316,18 @@ export function PlayoffBracket({
           />
         </div>
 
-        {/* Super Bowl */}
-        <div className="flex flex-col items-end py-2 pr-2">
-          <SuperBowlHeader />
-          <SuperBowlMatchup
-            afcChamp={afcBracket.champion}
-            nfcChamp={nfcBracket.champion}
-            winnerId={mergedSuperBowlWinner}
-            onWinnerChange={onSuperBowlWinnerChange}
-            locked={getLockedGames.superBowl}
-          />
+        {/* Super Bowl - 1/3 width, right-aligned */}
+        <div className="flex justify-end">
+          <div className="w-1/3 flex flex-col items-center">
+            <SuperBowlHeader />
+            <SuperBowlMatchup
+              afcChamp={afcBracket.champion}
+              nfcChamp={nfcBracket.champion}
+              winnerId={mergedSuperBowlWinner}
+              onWinnerChange={onSuperBowlWinnerChange}
+              locked={getLockedGames.superBowl}
+            />
+          </div>
         </div>
 
         {/* AFC Bracket */}

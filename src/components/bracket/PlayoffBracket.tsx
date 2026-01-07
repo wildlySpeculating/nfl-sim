@@ -248,31 +248,33 @@ export function PlayoffBracket({
     return locked;
   }, [playoffGames, afcSeeds, nfcSeeds, getPlayoffResults]);
 
+  const SuperBowlHeader = () => (
+    <div className="flex items-center justify-center gap-1 text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
+      <span>Super</span>
+      <img src="https://a.espncdn.com/i/teamlogos/nfl/500/nfl.png" alt="NFL" className="h-4 w-4 object-contain" />
+      <span>Bowl</span>
+    </div>
+  );
+
   return (
     <div className="p-2 @container">
       {/* Desktop layout - horizontal with Super Bowl in center (only when container is wide enough) */}
       <div className="hidden @[850px]:block">
         <div className="flex justify-between items-start">
           {/* NFC Side (left) */}
-          <div className="flex-1">
-            <div className="flex justify-center mb-2">
-              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/nfc.png" alt="NFC" className="h-6 object-contain" />
-            </div>
-            <ConferenceBracket
-              bracket={nfcBracket}
-              picks={mergedNfcPicks}
-              lockedGames={getLockedGames.nfc}
-              onWinnerChange={(round, index, winnerId) =>
-                onPlayoffWinnerChange('nfc', round, index, winnerId)
-              }
-            />
-          </div>
+          <ConferenceBracket
+            bracket={nfcBracket}
+            picks={mergedNfcPicks}
+            lockedGames={getLockedGames.nfc}
+            conference="nfc"
+            onWinnerChange={(round, index, winnerId) =>
+              onPlayoffWinnerChange('nfc', round, index, winnerId)
+            }
+          />
 
           {/* Super Bowl */}
           <div className="flex flex-col items-center justify-center px-4" style={{ marginTop: '80px' }}>
-            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-              Super Bowl
-            </div>
+            <SuperBowlHeader />
             <SuperBowlMatchup
               afcChamp={afcBracket.champion}
               nfcChamp={nfcBracket.champion}
@@ -283,47 +285,37 @@ export function PlayoffBracket({
           </div>
 
           {/* AFC Side (right) */}
-          <div className="flex-1">
-            <div className="flex justify-center mb-2">
-              <img src="https://a.espncdn.com/i/teamlogos/nfl/500/afc.png" alt="AFC" className="h-6 object-contain" />
-            </div>
-            <ConferenceBracket
-              bracket={afcBracket}
-              picks={mergedAfcPicks}
-              lockedGames={getLockedGames.afc}
-              onWinnerChange={(round, index, winnerId) =>
-                onPlayoffWinnerChange('afc', round, index, winnerId)
-              }
-              reverse
-            />
-          </div>
+          <ConferenceBracket
+            bracket={afcBracket}
+            picks={mergedAfcPicks}
+            lockedGames={getLockedGames.afc}
+            conference="afc"
+            onWinnerChange={(round, index, winnerId) =>
+              onPlayoffWinnerChange('afc', round, index, winnerId)
+            }
+            reverse
+          />
         </div>
       </div>
 
       {/* Stacked layout - for narrower containers (mobile, tablet, narrow panels) */}
       <div className="@[850px]:hidden space-y-4">
         {/* NFC Bracket */}
-        <div>
-          <div className="flex justify-center mb-2">
-            <img src="https://a.espncdn.com/i/teamlogos/nfl/500/nfc.png" alt="NFC" className="h-6 object-contain" />
-          </div>
-          <div className="overflow-x-auto">
-            <ConferenceBracket
-              bracket={nfcBracket}
-              picks={mergedNfcPicks}
-              lockedGames={getLockedGames.nfc}
-              onWinnerChange={(round, index, winnerId) =>
-                onPlayoffWinnerChange('nfc', round, index, winnerId)
-              }
-            />
-          </div>
+        <div className="overflow-x-auto">
+          <ConferenceBracket
+            bracket={nfcBracket}
+            picks={mergedNfcPicks}
+            lockedGames={getLockedGames.nfc}
+            conference="nfc"
+            onWinnerChange={(round, index, winnerId) =>
+              onPlayoffWinnerChange('nfc', round, index, winnerId)
+            }
+          />
         </div>
 
         {/* Super Bowl */}
         <div className="flex flex-col items-center py-2">
-          <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-            Super Bowl
-          </div>
+          <SuperBowlHeader />
           <SuperBowlMatchup
             afcChamp={afcBracket.champion}
             nfcChamp={nfcBracket.champion}
@@ -334,20 +326,16 @@ export function PlayoffBracket({
         </div>
 
         {/* AFC Bracket */}
-        <div>
-          <div className="flex justify-center mb-2">
-            <img src="https://a.espncdn.com/i/teamlogos/nfl/500/afc.png" alt="AFC" className="h-6 object-contain" />
-          </div>
-          <div className="overflow-x-auto">
-            <ConferenceBracket
-              bracket={afcBracket}
-              picks={mergedAfcPicks}
-              lockedGames={getLockedGames.afc}
-              onWinnerChange={(round, index, winnerId) =>
-                onPlayoffWinnerChange('afc', round, index, winnerId)
-              }
-            />
-          </div>
+        <div className="overflow-x-auto">
+          <ConferenceBracket
+            bracket={afcBracket}
+            picks={mergedAfcPicks}
+            lockedGames={getLockedGames.afc}
+            conference="afc"
+            onWinnerChange={(round, index, winnerId) =>
+              onPlayoffWinnerChange('afc', round, index, winnerId)
+            }
+          />
         </div>
       </div>
     </div>
@@ -547,6 +535,7 @@ interface ConferenceBracketProps {
   bracket: BracketState;
   picks: PlayoffPicks['afc'];
   lockedGames: LockedGames;
+  conference: 'afc' | 'nfc';
   onWinnerChange: (
     round: 'wildCard' | 'divisional' | 'championship',
     matchupIndex: number,
@@ -559,19 +548,26 @@ function ConferenceBracket({
   bracket,
   picks,
   lockedGames,
+  conference,
   onWinnerChange,
   reverse,
 }: ConferenceBracketProps) {
   const allWildCardDecided = bracket.wildCardWinners.every(w => w !== null);
   const allDivisionalDecided = bracket.divisionalWinners.every(w => w !== null);
+  const logoUrl = `https://a.espncdn.com/i/teamlogos/nfl/500/${conference}.png`;
+
+  const RoundHeader = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
+      <img src={logoUrl} alt={conference.toUpperCase()} className="h-3 w-3 object-contain" />
+      <span>{children}</span>
+    </div>
+  );
 
   return (
-    <div className={`flex ${reverse ? 'flex-row-reverse' : ''} gap-3`}>
+    <div className={`flex ${reverse ? 'flex-row-reverse' : ''} gap-3 flex-1`}>
       {/* Wild Card Round */}
-      <div className="space-y-1.5">
-        <div className="text-[10px] font-medium text-center text-gray-500 dark:text-gray-400 mb-1">
-          Wild Card
-        </div>
+      <div className="space-y-1.5 flex-1">
+        <RoundHeader>Wild Card</RoundHeader>
         {bracket.wildCardMatchups.map((matchup, i) => (
           <Matchup
             key={`wc-${i}`}
@@ -586,10 +582,8 @@ function ConferenceBracket({
       </div>
 
       {/* Divisional Round */}
-      <div className="flex flex-col justify-center space-y-1.5">
-        <div className="text-[10px] font-medium text-center text-gray-500 dark:text-gray-400 mb-1">
-          Divisional
-        </div>
+      <div className="flex flex-col justify-center space-y-1.5 flex-1">
+        <RoundHeader>Divisional</RoundHeader>
         {bracket.divisionalMatchups.map((matchup, i) => (
           <Matchup
             key={`div-${i}`}
@@ -605,17 +599,14 @@ function ConferenceBracket({
       </div>
 
       {/* Conference Championship */}
-      <div className="flex flex-col justify-center">
-        <div className="text-[10px] font-medium text-center text-gray-500 dark:text-gray-400 mb-1">
-          Championship
-        </div>
+      <div className="flex flex-col justify-center flex-1">
+        <RoundHeader>Championship</RoundHeader>
         <Matchup
           high={bracket.championshipMatchup[0]}
           low={bracket.championshipMatchup[1]}
           winnerId={picks.championship}
           onWinnerChange={(id) => onWinnerChange('championship', 0, id)}
           showSeeds
-          isChampionship
           disabled={!allDivisionalDecided}
           locked={lockedGames.championship}
         />
@@ -630,12 +621,11 @@ interface MatchupProps {
   winnerId: string | null;
   onWinnerChange: (winnerId: string | null) => void;
   showSeeds?: boolean;
-  isChampionship?: boolean;
   disabled?: boolean;
   locked?: boolean;
 }
 
-function Matchup({ high, low, winnerId, onWinnerChange, showSeeds, isChampionship, disabled, locked }: MatchupProps) {
+function Matchup({ high, low, winnerId, onWinnerChange, showSeeds, disabled, locked }: MatchupProps) {
   const handleClick = (teamWithSeed: TeamWithSeed | null) => {
     if (!teamWithSeed || disabled || locked) return;
     if (winnerId === teamWithSeed.team.id) {
@@ -646,7 +636,7 @@ function Matchup({ high, low, winnerId, onWinnerChange, showSeeds, isChampionshi
   };
 
   return (
-    <div className={`bg-gray-100 dark:bg-gray-700 rounded p-1 space-y-0.5 ${isChampionship ? 'ring-2 ring-yellow-400' : ''} ${disabled ? 'opacity-50' : ''} ${locked ? 'ring-1 ring-green-500' : ''}`}>
+    <div className={`bg-gray-100 dark:bg-gray-700 rounded p-1 space-y-0.5 ${disabled ? 'opacity-50' : ''} ${locked ? 'ring-1 ring-green-500' : ''}`}>
       <TeamSlot
         teamWithSeed={high}
         showSeed={showSeeds}
@@ -682,9 +672,9 @@ interface TeamSlotProps {
 function TeamSlot({ teamWithSeed, showSeed, isWinner, isLoser, onClick, disabled, locked }: TeamSlotProps) {
   if (!teamWithSeed) {
     return (
-      <div className="flex items-center gap-1.5 p-1.5 bg-gray-200 dark:bg-gray-600 rounded opacity-50 min-w-[95px] h-[32px]">
-        {showSeed && <span className="text-[10px] font-bold text-gray-400 w-3">-</span>}
-        <div className="w-5 h-5 bg-gray-300 dark:bg-gray-500 rounded" />
+      <div className="flex items-center gap-1.5 p-1.5 bg-gray-200 dark:bg-gray-600 rounded opacity-50 h-[32px]">
+        {showSeed && <span className="text-[10px] font-bold text-gray-400 w-3 shrink-0">-</span>}
+        <div className="w-5 h-5 bg-gray-300 dark:bg-gray-500 rounded shrink-0" />
         <span className="text-[10px] text-gray-400">TBD</span>
       </div>
     );
@@ -700,7 +690,7 @@ function TeamSlot({ teamWithSeed, showSeed, isWinner, isLoser, onClick, disabled
       whileTap={isInteractive ? { scale: 0.98 } : undefined}
       onClick={onClick}
       disabled={disabled || locked}
-      className={`w-full flex items-center gap-1.5 p-1.5 rounded min-w-[95px] h-[32px] transition-all ${
+      className={`w-full flex items-center gap-1.5 p-1.5 rounded h-[32px] transition-all ${
         isWinner
           ? 'bg-green-100 dark:bg-green-900/50 ring-2 ring-green-500'
           : isLoser
@@ -709,14 +699,14 @@ function TeamSlot({ teamWithSeed, showSeed, isWinner, isLoser, onClick, disabled
       } ${!isInteractive ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {showSeed && (
-        <span className="text-[10px] font-bold text-gray-400 w-3">{seed}</span>
+        <span className="text-[10px] font-bold text-gray-400 w-3 shrink-0">{seed}</span>
       )}
-      <img src={team.logo} alt={team.name} className="w-5 h-5 object-contain" />
-      <span className="text-xs font-medium text-gray-900 dark:text-white flex-1">
+      <img src={team.logo} alt={team.name} className="w-5 h-5 object-contain shrink-0" />
+      <span className="text-xs font-medium text-gray-900 dark:text-white flex-1 truncate">
         {team.abbreviation}
       </span>
       {isWinner && (
-        <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+        <svg className="w-3 h-3 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
         </svg>
       )}

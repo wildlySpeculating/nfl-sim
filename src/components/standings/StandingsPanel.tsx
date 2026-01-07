@@ -297,10 +297,10 @@ function LastFiveIndicator({ game }: LastFiveIndicatorProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[10px] font-medium text-white bg-gray-900 dark:bg-gray-700 rounded shadow-lg whitespace-nowrap pointer-events-none"
+            className="absolute z-50 bottom-full right-0 mb-1 px-2 py-1 text-[10px] font-medium text-white bg-gray-900 dark:bg-gray-700 rounded shadow-lg whitespace-nowrap pointer-events-none"
           >
             {formatScore()}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+            <div className="absolute top-full right-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
           </motion.div>
         )}
       </AnimatePresence>

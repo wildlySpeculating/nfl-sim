@@ -155,11 +155,10 @@ function App() {
               </div>
 
               <div className="p-2">
-                {viewMode === 'week' && (
+                {viewMode === 'week' && selectedWeek !== null && (
                   <WeekView
                     games={games}
-                    currentWeek={currentWeek}
-                    selectedWeek={selectedWeek || currentWeek}
+                    selectedWeek={selectedWeek}
                     selections={selections}
                     onWeekChange={setSelectedWeek}
                     onSelectionChange={setGameWinner}

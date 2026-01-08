@@ -82,8 +82,8 @@ function ConferenceStandings({ conference, standings, isExpanded, onToggle }: Co
               <div className="col-span-2 text-center">Div</div>
               <div className="col-span-2 text-center">Conf</div>
               <div className="col-span-2 text-center">Diff</div>
-              <div className="col-span-1 text-center">Strk</div>
-              <div className="col-span-2 text-center">L5</div>
+              <div className="hidden sm:block col-span-1 text-center">Strk</div>
+              <div className="col-span-3 sm:col-span-2 text-center">L5</div>
             </div>
 
             {/* Playoff teams */}
@@ -217,8 +217,8 @@ function TeamRow({ standing, rank, showPlayoffLine }: TeamRowProps) {
         {formatPointDiff(standing)}
       </div>
 
-      {/* Streak */}
-      <div className={`col-span-1 text-center text-[10px] font-medium ${
+      {/* Streak - hidden on mobile */}
+      <div className={`hidden sm:block col-span-1 text-center text-[10px] font-medium ${
         streak?.startsWith('W')
           ? 'text-green-600 dark:text-green-400'
           : streak?.startsWith('L')
@@ -229,7 +229,7 @@ function TeamRow({ standing, rank, showPlayoffLine }: TeamRowProps) {
       </div>
 
       {/* Last 5 */}
-      <div className="col-span-2 flex justify-center gap-0.5">
+      <div className="col-span-3 sm:col-span-2 flex justify-center gap-0.5">
         {lastFive && lastFive.length > 0 ? (
           lastFive.map((game, i) => (
             <LastFiveIndicator key={i} game={game} />

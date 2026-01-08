@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { TeamStanding, LastFiveGame } from '@/types';
-import { formatRecord, formatDivisionRecord, formatPointDiff } from '@/hooks/useStandings';
+import { formatRecord, formatDivisionRecord, formatConferenceRecord, formatPointDiff } from '@/hooks/useStandings';
 
 interface StandingsPanelProps {
   afcStandings: TeamStanding[];
@@ -76,10 +76,11 @@ function ConferenceStandings({ conference, standings, isExpanded, onToggle }: Co
             className="overflow-hidden"
           >
             {/* Table header */}
-            <div className="grid grid-cols-12 gap-1 px-3 py-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-14 gap-1 px-3 py-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
               <div className="col-span-3">Team</div>
               <div className="col-span-2 text-center">Record</div>
               <div className="col-span-2 text-center">Div</div>
+              <div className="col-span-2 text-center">Conf</div>
               <div className="col-span-2 text-center">Diff</div>
               <div className="col-span-1 text-center">Strk</div>
               <div className="col-span-2 text-center">L5</div>
@@ -152,7 +153,7 @@ function TeamRow({ standing, rank, showPlayoffLine }: TeamRowProps) {
       layout
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className={`grid grid-cols-12 gap-1 px-3 py-1 items-center hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${
+      className={`grid grid-cols-14 gap-1 px-3 py-1 items-center hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${
         isEliminated ? 'opacity-50 grayscale' : ''
       }`}
       title={magicTooltip || undefined}
@@ -198,6 +199,11 @@ function TeamRow({ standing, rank, showPlayoffLine }: TeamRowProps) {
       {/* Division record */}
       <div className="col-span-2 text-center text-xs text-gray-500 dark:text-gray-400">
         {formatDivisionRecord(standing)}
+      </div>
+
+      {/* Conference record */}
+      <div className="col-span-2 text-center text-xs text-gray-500 dark:text-gray-400">
+        {formatConferenceRecord(standing)}
       </div>
 
       {/* Point differential */}

@@ -50,23 +50,44 @@ export function WeekView({
 
   return (
     <div>
-      {/* Week selector */}
-      <div className="flex items-center gap-1 mb-2 overflow-x-auto pb-1">
-        {Array.from({ length: 18 }, (_, i) => i + 1).map(week => (
-          <button
-            key={week}
-            onClick={() => onWeekChange(week)}
-            className={`px-2 py-1 text-xs font-medium rounded whitespace-nowrap transition-colors ${
-              week === selectedWeek
-                ? 'bg-blue-600 text-white'
-                : week === currentWeek
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-          >
-            {week}
-          </button>
-        ))}
+      {/* Week selector - two rows */}
+      <div className="mb-2 space-y-1">
+        {/* Weeks 1-9 */}
+        <div className="grid grid-cols-9 gap-1">
+          {Array.from({ length: 9 }, (_, i) => i + 1).map(week => (
+            <button
+              key={week}
+              onClick={() => onWeekChange(week)}
+              className={`py-1 text-xs font-medium rounded transition-colors ${
+                week === selectedWeek
+                  ? 'bg-blue-600 text-white'
+                  : week === currentWeek
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              {week}
+            </button>
+          ))}
+        </div>
+        {/* Weeks 10-18 */}
+        <div className="grid grid-cols-9 gap-1">
+          {Array.from({ length: 9 }, (_, i) => i + 10).map(week => (
+            <button
+              key={week}
+              onClick={() => onWeekChange(week)}
+              className={`py-1 text-xs font-medium rounded transition-colors ${
+                week === selectedWeek
+                  ? 'bg-blue-600 text-white'
+                  : week === currentWeek
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              {week}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Games list */}

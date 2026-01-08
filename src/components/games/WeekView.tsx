@@ -4,6 +4,7 @@ import { GameCard } from './GameCard';
 
 interface WeekViewProps {
   games: Game[];
+  currentWeek: number;
   selectedWeek: number;
   selections: Record<string, GameSelection>;
   onWeekChange: (week: number) => void;
@@ -13,6 +14,7 @@ interface WeekViewProps {
 
 export function WeekView({
   games,
+  currentWeek,
   selectedWeek,
   selections,
   onWeekChange,
@@ -59,6 +61,8 @@ export function WeekView({
               className={`py-1 text-xs font-medium rounded transition-colors ${
                 week === selectedWeek
                   ? 'bg-blue-600 text-white'
+                  : week === currentWeek
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
@@ -75,6 +79,8 @@ export function WeekView({
               className={`py-1 text-xs font-medium rounded transition-colors ${
                 week === selectedWeek
                   ? 'bg-blue-600 text-white'
+                  : week === currentWeek
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >

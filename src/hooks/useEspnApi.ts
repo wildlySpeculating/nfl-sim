@@ -191,7 +191,7 @@ function parsePlayoffGame(event: EspnEvent, round: PlayoffGame['round']): Playof
 export function useEspnApi(pollInterval = 45000): UseEspnApiReturn {
   const [games, setGames] = useState<Game[]>([]);
   const [playoffGames, setPlayoffGames] = useState<PlayoffGame[]>([]);
-  const [currentWeek, setCurrentWeek] = useState(1);
+  const [currentWeek, setCurrentWeek] = useState(18);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -206,7 +206,8 @@ export function useEspnApi(pollInterval = 45000): UseEspnApiReturn {
       // First, get current week
       const currentWeekUrl = `${ESPN_BASE_URL}/scoreboard?seasontype=${REGULAR_SEASON_TYPE}`;
       const currentWeekData = await fetchWithRetry<EspnScoreboardResponse>(currentWeekUrl);
-      const week = currentWeekData.week?.number || 1;
+      // Cap at week 18 for regular season (if past regular season, show week 18)
+      const week = Math.min(currentWeekData.week?.number || 18, 18);
       setCurrentWeek(week);
 
       // Fetch all weeks (1-18 for regular season)

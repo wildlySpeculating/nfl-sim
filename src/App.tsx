@@ -158,6 +158,7 @@ function App() {
                 {viewMode === 'week' && selectedWeek !== null && (
                   <WeekView
                     games={games}
+                    currentWeek={currentWeek}
                     selectedWeek={selectedWeek}
                     selections={selections}
                     onWeekChange={setSelectedWeek}

@@ -12,6 +12,60 @@ interface DraftOrderProps {
   games: Game[];
 }
 
+// Helper to determine what round needs picks next
+function getMissingRoundMessage(
+  playoffPicks: PlayoffPicks,
+  playoffGames: PlayoffGame[]
+): string | null {
+  // Check wild card (6 games total - 3 per conference)
+  const wcGames = playoffGames.filter(g => g.round === 'wildCard');
+  const wcComplete = wcGames.filter(g => g.status === 'final').length;
+  const wcPicks = [
+    ...playoffPicks.afc.wildCard.filter(p => p !== null),
+    ...playoffPicks.nfc.wildCard.filter(p => p !== null),
+  ].length;
+  const wcTotal = wcComplete + wcPicks;
+  if (wcTotal < 6) {
+    const remaining = 6 - wcTotal;
+    return `Select ${remaining} more Wild Card winner${remaining > 1 ? 's' : ''} to see picks 19-24`;
+  }
+
+  // Check divisional (4 games total - 2 per conference)
+  const divGames = playoffGames.filter(g => g.round === 'divisional');
+  const divComplete = divGames.filter(g => g.status === 'final').length;
+  const divPicks = [
+    ...playoffPicks.afc.divisional.filter(p => p !== null),
+    ...playoffPicks.nfc.divisional.filter(p => p !== null),
+  ].length;
+  const divTotal = divComplete + divPicks;
+  if (divTotal < 4) {
+    const remaining = 4 - divTotal;
+    return `Select ${remaining} more Divisional winner${remaining > 1 ? 's' : ''} to see picks 25-28`;
+  }
+
+  // Check conference championship (2 games total)
+  const confGames = playoffGames.filter(g => g.round === 'championship');
+  const confComplete = confGames.filter(g => g.status === 'final').length;
+  const confPicks = [
+    playoffPicks.afc.championship,
+    playoffPicks.nfc.championship,
+  ].filter(p => p !== null).length;
+  const confTotal = confComplete + confPicks;
+  if (confTotal < 2) {
+    const remaining = 2 - confTotal;
+    return `Select ${remaining} more Conference Championship winner${remaining > 1 ? 's' : ''} to see picks 29-30`;
+  }
+
+  // Check Super Bowl
+  const sbGame = playoffGames.find(g => g.round === 'superBowl');
+  const sbComplete = sbGame?.status === 'final';
+  if (!sbComplete && !playoffPicks.superBowl) {
+    return 'Select Super Bowl winner to see picks 31-32';
+  }
+
+  return null;
+}
+
 export function DraftOrder({ afcStandings, nfcStandings, playoffPicks, playoffGames, games }: DraftOrderProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -19,8 +73,8 @@ export function DraftOrder({ afcStandings, nfcStandings, playoffPicks, playoffGa
     return calculateDraftOrder(afcStandings, nfcStandings, playoffPicks, playoffGames, games);
   }, [afcStandings, nfcStandings, playoffPicks, playoffGames, games]);
 
-  // Check if we have enough playoff picks to show meaningful draft order
-  const hasPlayoffPicks = playoffPicks.superBowl !== null;
+  // Get dynamic message about what's needed next
+  const missingRoundMessage = getMissingRoundMessage(playoffPicks, playoffGames);
   const partialPicks = draftOrder.length > 0 && draftOrder.length < 32;
 
   return (
@@ -63,9 +117,9 @@ export function DraftOrder({ afcStandings, nfcStandings, playoffPicks, playoffGa
               </div>
             ) : (
               <>
-                {!hasPlayoffPicks && (
+                {missingRoundMessage && (
                   <div className="px-3 py-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-900/30">
-                    Complete playoff bracket picks to see full draft order (picks 19-32)
+                    {missingRoundMessage}
                   </div>
                 )}
 

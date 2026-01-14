@@ -22,44 +22,157 @@ interface TeamWithSeed {
   seed: number;
 }
 
-// Helper to find which matchup index a playoff game corresponds to
-function findMatchupIndex(game: PlayoffGame, seeds: TeamWithSeed[], round: string): number {
-  if (round !== 'wildCard') return -1;
+interface BracketState {
+  seeds: TeamWithSeed[];
+  wildCardMatchups: [TeamWithSeed | null, TeamWithSeed | null][];
+  wildCardWinners: (TeamWithSeed | null)[];
+  divisionalMatchups: [TeamWithSeed | null, TeamWithSeed | null][];
+  divisionalWinners: (TeamWithSeed | null)[];
+  championshipMatchup: [TeamWithSeed | null, TeamWithSeed | null];
+  champion: TeamWithSeed | null;
+}
 
-  // Wild Card matchups: 2v7=0, 3v6=1, 4v5=2
-  const matchups = [
-    [2, 7],
-    [3, 6],
-    [4, 5],
-  ];
+// Build bracket from actual playoff games
+function buildBracketFromGames(
+  conferenceGames: Record<string, PlayoffGame[]>,
+  picks: PlayoffPicks['afc'],
+  fallbackSeeds: TeamWithSeed[]
+): BracketState {
+  const wcGames = conferenceGames.wildCard || [];
+  const divGames = conferenceGames.divisional || [];
+  const champGames = conferenceGames.championship || [];
 
-  const homeTeamSeed = seeds.find(s => s.team.id === game.homeTeam.id)?.seed;
-  const awayTeamSeed = seeds.find(s => s.team.id === game.awayTeam.id)?.seed;
+  // Helper to create TeamWithSeed from a team (use seed 0 as placeholder if not in standings)
+  const toTeamWithSeed = (team: Team): TeamWithSeed => {
+    const standing = fallbackSeeds.find(s => s.team.id === team.id);
+    return standing || { team, seed: 0 };
+  };
 
-  if (!homeTeamSeed || !awayTeamSeed) return -1;
+  // Build wild card matchups from actual games or fallback to standings
+  let wildCardMatchups: [TeamWithSeed | null, TeamWithSeed | null][] = [];
+  let wildCardWinners: (TeamWithSeed | null)[] = [];
 
-  for (let i = 0; i < matchups.length; i++) {
-    const [high, low] = matchups[i];
-    if ((homeTeamSeed === high && awayTeamSeed === low) ||
-        (homeTeamSeed === low && awayTeamSeed === high)) {
-      return i;
+  if (wcGames.length > 0) {
+    // Use actual playoff games - home team is higher seed
+    wildCardMatchups = wcGames.map(game => [
+      toTeamWithSeed(game.homeTeam),
+      toTeamWithSeed(game.awayTeam),
+    ]);
+    wildCardWinners = wcGames.map(game => {
+      if (game.winnerId) {
+        const winner = game.winnerId === game.homeTeam.id ? game.homeTeam : game.awayTeam;
+        return toTeamWithSeed(winner);
+      }
+      // Check picks for user selection
+      const pickIndex = wcGames.indexOf(game);
+      const pickedId = picks.wildCard[pickIndex];
+      if (pickedId) {
+        const winner = pickedId === game.homeTeam.id ? game.homeTeam : game.awayTeam;
+        return toTeamWithSeed(winner);
+      }
+      return null;
+    });
+  } else {
+    // Fallback to standings-based matchups (2v7, 3v6, 4v5)
+    const getSeed = (num: number) => fallbackSeeds.find(s => s.seed === num) || null;
+    wildCardMatchups = [
+      [getSeed(2), getSeed(7)],
+      [getSeed(3), getSeed(6)],
+      [getSeed(4), getSeed(5)],
+    ];
+    wildCardWinners = picks.wildCard.map((winnerId, i) => {
+      if (!winnerId) return null;
+      const [high, low] = wildCardMatchups[i];
+      if (high?.team.id === winnerId) return high;
+      if (low?.team.id === winnerId) return low;
+      return null;
+    });
+  }
+
+  // Build divisional matchups from actual games or derive from wild card results
+  let divisionalMatchups: [TeamWithSeed | null, TeamWithSeed | null][] = [];
+  let divisionalWinners: (TeamWithSeed | null)[] = [];
+
+  if (divGames.length > 0) {
+    // Use actual divisional games
+    divisionalMatchups = divGames.map(game => [
+      toTeamWithSeed(game.homeTeam),
+      toTeamWithSeed(game.awayTeam),
+    ]);
+    divisionalWinners = divGames.map((game, i) => {
+      if (game.winnerId) {
+        const winner = game.winnerId === game.homeTeam.id ? game.homeTeam : game.awayTeam;
+        return toTeamWithSeed(winner);
+      }
+      const pickedId = picks.divisional[i];
+      if (pickedId) {
+        const winner = pickedId === game.homeTeam.id ? game.homeTeam : game.awayTeam;
+        return toTeamWithSeed(winner);
+      }
+      return null;
+    });
+  } else {
+    // Derive from wild card winners + 1 seed
+    const seed1 = fallbackSeeds.find(s => s.seed === 1) || null;
+    const allWcDecided = wildCardWinners.every(w => w !== null);
+
+    if (allWcDecided && seed1) {
+      const divisionalTeams = [seed1, ...wildCardWinners.filter(Boolean) as TeamWithSeed[]]
+        .sort((a, b) => a.seed - b.seed);
+      divisionalMatchups = [
+        [divisionalTeams[0], divisionalTeams[3]], // 1 vs lowest
+        [divisionalTeams[1], divisionalTeams[2]], // 2nd vs 3rd
+      ];
+    } else {
+      divisionalMatchups = [
+        [seed1, null],
+        [null, null],
+      ];
+    }
+    divisionalWinners = picks.divisional.map((winnerId, i) => {
+      if (!winnerId) return null;
+      const [high, low] = divisionalMatchups[i];
+      if (high?.team.id === winnerId) return high;
+      if (low?.team.id === winnerId) return low;
+      return null;
+    });
+  }
+
+  // Build championship matchup
+  let championshipMatchup: [TeamWithSeed | null, TeamWithSeed | null] = [null, null];
+  let champion: TeamWithSeed | null = null;
+
+  if (champGames.length > 0) {
+    const game = champGames[0];
+    championshipMatchup = [toTeamWithSeed(game.homeTeam), toTeamWithSeed(game.awayTeam)];
+    if (game.winnerId) {
+      const winner = game.winnerId === game.homeTeam.id ? game.homeTeam : game.awayTeam;
+      champion = toTeamWithSeed(winner);
+    } else if (picks.championship) {
+      const winner = picks.championship === game.homeTeam.id ? game.homeTeam : game.awayTeam;
+      champion = toTeamWithSeed(winner);
+    }
+  } else {
+    const allDivDecided = divisionalWinners.every(w => w !== null);
+    if (allDivDecided) {
+      const champTeams = (divisionalWinners.filter(Boolean) as TeamWithSeed[])
+        .sort((a, b) => a.seed - b.seed);
+      championshipMatchup = [champTeams[0] || null, champTeams[1] || null];
+    }
+    if (picks.championship) {
+      champion = divisionalWinners.find(w => w?.team.id === picks.championship) || null;
     }
   }
 
-  return -1;
-}
-
-interface BracketState {
-  seeds: TeamWithSeed[];
-  // Wild Card: 2v7, 3v6, 4v5
-  wildCardMatchups: [TeamWithSeed | null, TeamWithSeed | null][];
-  wildCardWinners: (TeamWithSeed | null)[];
-  // Divisional after reseeding
-  divisionalMatchups: [TeamWithSeed | null, TeamWithSeed | null][];
-  divisionalWinners: (TeamWithSeed | null)[];
-  // Championship
-  championshipMatchup: [TeamWithSeed | null, TeamWithSeed | null];
-  champion: TeamWithSeed | null;
+  return {
+    seeds: fallbackSeeds,
+    wildCardMatchups,
+    wildCardWinners,
+    divisionalMatchups,
+    divisionalWinners,
+    championshipMatchup,
+    champion,
+  };
 }
 
 export function PlayoffBracket({
@@ -86,8 +199,8 @@ export function PlayoffBracket({
     [nfcStandings]
   );
 
-  // Get real playoff results by conference and round
-  const getPlayoffResults = useMemo(() => {
+  // Get playoff games by conference and round
+  const playoffGamesByConference = useMemo(() => {
     const results: Record<string, Record<string, PlayoffGame[]>> = {
       afc: { wildCard: [], divisional: [], championship: [] },
       nfc: { wildCard: [], divisional: [], championship: [] },
@@ -102,120 +215,68 @@ export function PlayoffBracket({
     return results;
   }, [playoffGames]);
 
-  // Merge real results with user picks
-  const mergedAfcPicks = useMemo(() => {
-    const merged = { ...playoffPicks.afc };
-    const afcResults = getPlayoffResults.afc;
+  // Build brackets from actual games
+  const afcBracket = useMemo(() =>
+    buildBracketFromGames(playoffGamesByConference.afc, playoffPicks.afc, afcSeeds),
+    [playoffGamesByConference.afc, playoffPicks.afc, afcSeeds]
+  );
 
-    // Wild Card - match by teams involved
-    afcResults.wildCard.forEach(game => {
-      if (game.winnerId) {
-        // Find which matchup index this corresponds to (2v7=0, 3v6=1, 4v5=2)
-        const matchupIdx = findMatchupIndex(game, afcSeeds, 'wildCard');
-        if (matchupIdx !== -1) {
-          merged.wildCard[matchupIdx] = game.winnerId;
-        }
-      }
-    });
+  const nfcBracket = useMemo(() =>
+    buildBracketFromGames(playoffGamesByConference.nfc, playoffPicks.nfc, nfcSeeds),
+    [playoffGamesByConference.nfc, playoffPicks.nfc, nfcSeeds]
+  );
 
-    // Divisional
-    afcResults.divisional.forEach((game, i) => {
-      if (game.winnerId && i < 2) {
-        merged.divisional[i] = game.winnerId;
-      }
-    });
-
-    // Championship
-    if (afcResults.championship[0]?.winnerId) {
-      merged.championship = afcResults.championship[0].winnerId;
-    }
-
-    return merged;
-  }, [playoffPicks.afc, getPlayoffResults.afc, afcSeeds]);
-
-  const mergedNfcPicks = useMemo(() => {
-    const merged = { ...playoffPicks.nfc };
-    const nfcResults = getPlayoffResults.nfc;
-
-    nfcResults.wildCard.forEach(game => {
-      if (game.winnerId) {
-        const matchupIdx = findMatchupIndex(game, nfcSeeds, 'wildCard');
-        if (matchupIdx !== -1) {
-          merged.wildCard[matchupIdx] = game.winnerId;
-        }
-      }
-    });
-
-    nfcResults.divisional.forEach((game, i) => {
-      if (game.winnerId && i < 2) {
-        merged.divisional[i] = game.winnerId;
-      }
-    });
-
-    if (nfcResults.championship[0]?.winnerId) {
-      merged.championship = nfcResults.championship[0].winnerId;
-    }
-
-    return merged;
-  }, [playoffPicks.nfc, getPlayoffResults.nfc, nfcSeeds]);
-
-  // Get Super Bowl result
+  // Get Super Bowl game and winner
   const superBowlGame = playoffGames.find(g => g.round === 'superBowl');
   const mergedSuperBowlWinner = superBowlGame?.winnerId || playoffPicks.superBowl;
 
   // Auto-apply real results to picks
   useEffect(() => {
-    const afcResults = getPlayoffResults.afc;
-    const nfcResults = getPlayoffResults.nfc;
-
-    // Apply AFC results
-    afcResults.wildCard.forEach(game => {
-      if (game.winnerId) {
-        const matchupIdx = findMatchupIndex(game, afcSeeds, 'wildCard');
-        if (matchupIdx !== -1 && playoffPicks.afc.wildCard[matchupIdx] !== game.winnerId) {
-          onPlayoffWinnerChange('afc', 'wildCard', matchupIdx, game.winnerId);
-        }
+    // Apply AFC wild card results
+    playoffGamesByConference.afc.wildCard.forEach((game, i) => {
+      if (game.winnerId && playoffPicks.afc.wildCard[i] !== game.winnerId) {
+        onPlayoffWinnerChange('afc', 'wildCard', i, game.winnerId);
       }
     });
 
-    afcResults.divisional.forEach((game, i) => {
-      if (game.winnerId && i < 2 && playoffPicks.afc.divisional[i] !== game.winnerId) {
+    // Apply AFC divisional results
+    playoffGamesByConference.afc.divisional.forEach((game, i) => {
+      if (game.winnerId && playoffPicks.afc.divisional[i] !== game.winnerId) {
         onPlayoffWinnerChange('afc', 'divisional', i, game.winnerId);
       }
     });
 
-    if (afcResults.championship[0]?.winnerId && playoffPicks.afc.championship !== afcResults.championship[0].winnerId) {
-      onPlayoffWinnerChange('afc', 'championship', 0, afcResults.championship[0].winnerId);
+    // Apply AFC championship result
+    const afcChamp = playoffGamesByConference.afc.championship[0];
+    if (afcChamp?.winnerId && playoffPicks.afc.championship !== afcChamp.winnerId) {
+      onPlayoffWinnerChange('afc', 'championship', 0, afcChamp.winnerId);
     }
 
-    // Apply NFC results
-    nfcResults.wildCard.forEach(game => {
-      if (game.winnerId) {
-        const matchupIdx = findMatchupIndex(game, nfcSeeds, 'wildCard');
-        if (matchupIdx !== -1 && playoffPicks.nfc.wildCard[matchupIdx] !== game.winnerId) {
-          onPlayoffWinnerChange('nfc', 'wildCard', matchupIdx, game.winnerId);
-        }
+    // Apply NFC wild card results
+    playoffGamesByConference.nfc.wildCard.forEach((game, i) => {
+      if (game.winnerId && playoffPicks.nfc.wildCard[i] !== game.winnerId) {
+        onPlayoffWinnerChange('nfc', 'wildCard', i, game.winnerId);
       }
     });
 
-    nfcResults.divisional.forEach((game, i) => {
-      if (game.winnerId && i < 2 && playoffPicks.nfc.divisional[i] !== game.winnerId) {
+    // Apply NFC divisional results
+    playoffGamesByConference.nfc.divisional.forEach((game, i) => {
+      if (game.winnerId && playoffPicks.nfc.divisional[i] !== game.winnerId) {
         onPlayoffWinnerChange('nfc', 'divisional', i, game.winnerId);
       }
     });
 
-    if (nfcResults.championship[0]?.winnerId && playoffPicks.nfc.championship !== nfcResults.championship[0].winnerId) {
-      onPlayoffWinnerChange('nfc', 'championship', 0, nfcResults.championship[0].winnerId);
+    // Apply NFC championship result
+    const nfcChamp = playoffGamesByConference.nfc.championship[0];
+    if (nfcChamp?.winnerId && playoffPicks.nfc.championship !== nfcChamp.winnerId) {
+      onPlayoffWinnerChange('nfc', 'championship', 0, nfcChamp.winnerId);
     }
 
     // Apply Super Bowl result
     if (superBowlGame?.winnerId && playoffPicks.superBowl !== superBowlGame.winnerId) {
       onSuperBowlWinnerChange(superBowlGame.winnerId);
     }
-  }, [getPlayoffResults, afcSeeds, nfcSeeds, playoffPicks, onPlayoffWinnerChange, onSuperBowlWinnerChange, superBowlGame]);
-
-  const afcBracket = useMemo(() => calculateBracket(afcSeeds, mergedAfcPicks), [afcSeeds, mergedAfcPicks]);
-  const nfcBracket = useMemo(() => calculateBracket(nfcSeeds, mergedNfcPicks), [nfcSeeds, mergedNfcPicks]);
+  }, [playoffGamesByConference, playoffPicks, onPlayoffWinnerChange, onSuperBowlWinnerChange, superBowlGame]);
 
   // Check if games are locked (real results exist)
   const getLockedGames = useMemo(() => {
@@ -225,28 +286,32 @@ export function PlayoffBracket({
       superBowl: false,
     };
 
-    for (const game of playoffGames) {
-      if (game.status === 'final' && game.winnerId) {
-        if (game.round === 'superBowl') {
-          locked.superBowl = true;
-        } else if (game.conference) {
-          if (game.round === 'wildCard') {
-            const seeds = game.conference === 'afc' ? afcSeeds : nfcSeeds;
-            const idx = findMatchupIndex(game, seeds, 'wildCard');
-            if (idx !== -1) locked[game.conference].wildCard[idx] = true;
-          } else if (game.round === 'divisional') {
-            const results = getPlayoffResults[game.conference].divisional;
-            const idx = results.indexOf(game);
-            if (idx !== -1 && idx < 2) locked[game.conference].divisional[idx] = true;
-          } else if (game.round === 'championship') {
-            locked[game.conference].championship = true;
-          }
-        }
-      }
+    playoffGamesByConference.afc.wildCard.forEach((game, i) => {
+      if (game.status === 'final' && game.winnerId) locked.afc.wildCard[i] = true;
+    });
+    playoffGamesByConference.afc.divisional.forEach((game, i) => {
+      if (game.status === 'final' && game.winnerId) locked.afc.divisional[i] = true;
+    });
+    if (playoffGamesByConference.afc.championship[0]?.status === 'final') {
+      locked.afc.championship = true;
+    }
+
+    playoffGamesByConference.nfc.wildCard.forEach((game, i) => {
+      if (game.status === 'final' && game.winnerId) locked.nfc.wildCard[i] = true;
+    });
+    playoffGamesByConference.nfc.divisional.forEach((game, i) => {
+      if (game.status === 'final' && game.winnerId) locked.nfc.divisional[i] = true;
+    });
+    if (playoffGamesByConference.nfc.championship[0]?.status === 'final') {
+      locked.nfc.championship = true;
+    }
+
+    if (superBowlGame?.status === 'final' && superBowlGame.winnerId) {
+      locked.superBowl = true;
     }
 
     return locked;
-  }, [playoffGames, afcSeeds, nfcSeeds, getPlayoffResults]);
+  }, [playoffGamesByConference, superBowlGame]);
 
   const SuperBowlHeader = () => (
     <div className="flex items-center justify-center gap-1 text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
@@ -259,13 +324,11 @@ export function PlayoffBracket({
   return (
     <div className="p-2 @container">
       {/* Desktop layout - horizontal with Super Bowl in center (only when container is wide enough) */}
-      {/* 7 columns total: 3 NFC rounds + 1 Super Bowl + 3 AFC rounds */}
       <div className="hidden @[850px]:grid grid-cols-7 gap-3">
         {/* NFC Side (left) - 3 columns */}
         <div className="col-span-3">
           <ConferenceBracket
             bracket={nfcBracket}
-            picks={mergedNfcPicks}
             lockedGames={getLockedGames.nfc}
             conference="nfc"
             onWinnerChange={(round, index, winnerId) =>
@@ -290,7 +353,6 @@ export function PlayoffBracket({
         <div className="col-span-3">
           <ConferenceBracket
             bracket={afcBracket}
-            picks={mergedAfcPicks}
             lockedGames={getLockedGames.afc}
             conference="afc"
             onWinnerChange={(round, index, winnerId) =>
@@ -307,7 +369,6 @@ export function PlayoffBracket({
         <div className="overflow-x-auto">
           <ConferenceBracket
             bracket={nfcBracket}
-            picks={mergedNfcPicks}
             lockedGames={getLockedGames.nfc}
             conference="nfc"
             onWinnerChange={(round, index, winnerId) =>
@@ -334,7 +395,6 @@ export function PlayoffBracket({
         <div className="overflow-x-auto">
           <ConferenceBracket
             bracket={afcBracket}
-            picks={mergedAfcPicks}
             lockedGames={getLockedGames.afc}
             conference="afc"
             onWinnerChange={(round, index, winnerId) =>
@@ -347,189 +407,6 @@ export function PlayoffBracket({
   );
 }
 
-function calculateBracket(
-  seeds: TeamWithSeed[],
-  picks: PlayoffPicks['afc']
-): BracketState {
-  const getSeed = (seedNum: number): TeamWithSeed | null => seeds[seedNum - 1] || null;
-  const seed1 = getSeed(1);
-
-  // Wild Card matchups: 2v7, 3v6, 4v5
-  const wildCardMatchups: [TeamWithSeed | null, TeamWithSeed | null][] = [
-    [getSeed(2), getSeed(7)],
-    [getSeed(3), getSeed(6)],
-    [getSeed(4), getSeed(5)],
-  ];
-
-  // Get wild card winners (null if not yet picked)
-  const wildCardWinners: (TeamWithSeed | null)[] = picks.wildCard.map((winnerId, i) => {
-    if (!winnerId) return null;
-    const [high, low] = wildCardMatchups[i];
-    if (high?.team.id === winnerId) return high;
-    if (low?.team.id === winnerId) return low;
-    return null;
-  });
-
-  // Check if all wild card games are decided
-  const allWildCardDecided = wildCardWinners.every(w => w !== null);
-
-  // Divisional matchups - show partial reseeding as wild card winners are determined
-  // Matchup 0: 1 seed vs lowest remaining seed
-  // Matchup 1: 2nd highest vs 3rd highest (the middle two)
-  let divisionalMatchups: [TeamWithSeed | null, TeamWithSeed | null][] = [
-    [seed1, null],  // 1 seed always in matchup 0
-    [null, null],
-  ];
-
-  if (allWildCardDecided && seed1) {
-    // All wild card games decided - full reseeding
-    const divisionalTeams = [seed1, ...wildCardWinners.filter(Boolean) as TeamWithSeed[]]
-      .sort((a, b) => a.seed - b.seed);
-
-    divisionalMatchups = [
-      [divisionalTeams[0], divisionalTeams[3]], // 1 vs lowest
-      [divisionalTeams[1], divisionalTeams[2]], // 2nd vs 3rd
-    ];
-  } else if (seed1) {
-    // For each decided winner, determine their guaranteed position among WC winners:
-    // - 1st (highest): matchup 1 slot 0 (home/top)
-    // - 2nd (middle): matchup 1 slot 1 (away/bottom)
-    // - 3rd (lowest): matchup 0 slot 1 (vs 1 seed, away/bottom)
-    //
-    // A winner is guaranteed a position if their seed is higher/lower than
-    // all other possible outcomes (both undecided games AND other decided winners)
-
-    const decidedWinners = wildCardWinners.filter(Boolean) as TeamWithSeed[];
-
-    // Get all possible seeds from undecided games
-    const undecidedRanges: { min: number; max: number }[] = [];
-    if (!wildCardWinners[0]) undecidedRanges.push({ min: 2, max: 7 }); // 2v7 undecided
-    if (!wildCardWinners[1]) undecidedRanges.push({ min: 3, max: 6 }); // 3v6 undecided
-    if (!wildCardWinners[2]) undecidedRanges.push({ min: 4, max: 5 }); // 4v5 undecided
-
-    // For each decided winner, count how many "slots" are guaranteed above/below them
-    // A slot is above if its MAX possible seed < winner's seed (definitely higher ranked)
-    // A slot is below if its MIN possible seed > winner's seed (definitely lower ranked)
-
-    const getGuaranteedPosition = (winner: TeamWithSeed): 1 | 2 | 3 | null => {
-      let definitelyAbove = 0; // slots guaranteed to have higher rank (lower seed number)
-      let definitelyBelow = 0; // slots guaranteed to have lower rank (higher seed number)
-
-      // Check against undecided games
-      for (const range of undecidedRanges) {
-        if (range.max < winner.seed) {
-          // This undecided game will definitely produce someone higher ranked
-          definitelyAbove++;
-        } else if (range.min > winner.seed) {
-          // This undecided game will definitely produce someone lower ranked
-          definitelyBelow++;
-        }
-      }
-
-      // Check against other decided winners
-      for (const other of decidedWinners) {
-        if (other === winner) continue;
-        if (other.seed < winner.seed) {
-          definitelyAbove++;
-        } else if (other.seed > winner.seed) {
-          definitelyBelow++;
-        }
-      }
-
-      // Determine position based on guaranteed counts
-      // Position 1 (highest): no one definitely above
-      // Position 3 (lowest): no one definitely below
-      // Position 2 (middle): exactly 1 above and 1 below
-      const totalSlots = undecidedRanges.length + decidedWinners.length - 1; // -1 for self
-
-      if (definitelyAbove === 0) return 1; // Guaranteed highest
-      if (definitelyBelow === 0) return 3; // Guaranteed lowest
-      if (definitelyAbove >= 1 && definitelyBelow >= 1) return 2; // Guaranteed middle
-
-      return null; // Position depends on undecided outcomes
-    };
-
-    // Place each decided winner in their guaranteed position
-    for (const winner of decidedWinners) {
-      const position = getGuaranteedPosition(winner);
-      if (position === 1) {
-        divisionalMatchups[1][0] = winner; // Highest WC → matchup 1 slot 0 (home)
-      } else if (position === 2) {
-        divisionalMatchups[1][1] = winner; // Middle → matchup 1 slot 1 (away)
-      } else if (position === 3) {
-        divisionalMatchups[0][1] = winner; // Lowest → matchup 0 slot 1 (vs 1 seed)
-      }
-    }
-  }
-
-  // Get divisional winners
-  const divisionalWinners: (TeamWithSeed | null)[] = picks.divisional.map((winnerId, i) => {
-    if (!winnerId) return null;
-    const [high, low] = divisionalMatchups[i];
-    if (high?.team.id === winnerId) return high;
-    if (low?.team.id === winnerId) return low;
-    return null;
-  });
-
-  // Championship matchup - show divisional winners as they're decided
-  // Higher seed = home (slot 0/top), Lower seed = away (slot 1/bottom)
-  const allDivisionalDecided = divisionalWinners.every(w => w !== null);
-  let championshipMatchup: [TeamWithSeed | null, TeamWithSeed | null] = [null, null];
-
-  if (allDivisionalDecided) {
-    // Both divisional games decided - reseed: higher seed (top) vs lower seed (bottom)
-    const champTeams = (divisionalWinners.filter(Boolean) as TeamWithSeed[])
-      .sort((a, b) => a.seed - b.seed);
-    championshipMatchup = [champTeams[0] || null, champTeams[1] || null];
-  } else {
-    // Apply same logic: if a winner is guaranteed highest or lowest, place them
-    const decidedDivWinners = divisionalWinners.filter(Boolean) as TeamWithSeed[];
-
-    // Get possible seeds from undecided divisional matchups
-    const undecidedDivSeeds: number[] = [];
-    if (!divisionalWinners[0]) {
-      // Matchup 0 undecided - possible winners are whoever is in that matchup
-      if (divisionalMatchups[0][0]) undecidedDivSeeds.push(divisionalMatchups[0][0].seed);
-      if (divisionalMatchups[0][1]) undecidedDivSeeds.push(divisionalMatchups[0][1].seed);
-    }
-    if (!divisionalWinners[1]) {
-      if (divisionalMatchups[1][0]) undecidedDivSeeds.push(divisionalMatchups[1][0].seed);
-      if (divisionalMatchups[1][1]) undecidedDivSeeds.push(divisionalMatchups[1][1].seed);
-    }
-
-    const minUndecidedDiv = undecidedDivSeeds.length > 0 ? Math.min(...undecidedDivSeeds) : Infinity;
-    const maxUndecidedDiv = undecidedDivSeeds.length > 0 ? Math.max(...undecidedDivSeeds) : -Infinity;
-
-    for (const winner of decidedDivWinners) {
-      if (winner.seed < minUndecidedDiv) {
-        // Guaranteed highest seed - goes to slot 0 (home/top)
-        championshipMatchup[0] = winner;
-      } else if (winner.seed > maxUndecidedDiv) {
-        // Guaranteed lowest seed - goes to slot 1 (away/bottom)
-        championshipMatchup[1] = winner;
-      }
-      // If in between, position depends on other matchup result
-    }
-  }
-
-  // Champion
-  let champion: TeamWithSeed | null = null;
-  if (picks.championship) {
-    const winner = divisionalWinners.find(w => w?.team.id === picks.championship);
-    if (winner) champion = winner;
-  }
-
-  return {
-    seeds,
-    wildCardMatchups,
-    wildCardWinners,
-    divisionalMatchups,
-    divisionalWinners,
-    championshipMatchup,
-    champion,
-  };
-}
-
 interface LockedGames {
   wildCard: boolean[];
   divisional: boolean[];
@@ -538,7 +415,6 @@ interface LockedGames {
 
 interface ConferenceBracketProps {
   bracket: BracketState;
-  picks: PlayoffPicks['afc'];
   lockedGames: LockedGames;
   conference: 'afc' | 'nfc';
   onWinnerChange: (
@@ -551,7 +427,6 @@ interface ConferenceBracketProps {
 
 function ConferenceBracket({
   bracket,
-  picks,
   lockedGames,
   conference,
   onWinnerChange,
@@ -568,6 +443,11 @@ function ConferenceBracket({
     </div>
   );
 
+  // Get winner IDs for current picks
+  const wildCardWinnerIds = bracket.wildCardWinners.map(w => w?.team.id || null);
+  const divisionalWinnerIds = bracket.divisionalWinners.map(w => w?.team.id || null);
+  const championId = bracket.champion?.team.id || null;
+
   return (
     <div className={`flex ${reverse ? 'flex-row-reverse' : ''} gap-3 flex-1`}>
       {/* Wild Card Round */}
@@ -578,7 +458,7 @@ function ConferenceBracket({
             key={`wc-${i}`}
             high={matchup[0]}
             low={matchup[1]}
-            winnerId={picks.wildCard[i]}
+            winnerId={wildCardWinnerIds[i]}
             onWinnerChange={(id) => onWinnerChange('wildCard', i, id)}
             showSeeds
             locked={lockedGames.wildCard[i]}
@@ -594,10 +474,10 @@ function ConferenceBracket({
             key={`div-${i}`}
             high={matchup[0]}
             low={matchup[1]}
-            winnerId={picks.divisional[i]}
+            winnerId={divisionalWinnerIds[i]}
             onWinnerChange={(id) => onWinnerChange('divisional', i, id)}
             showSeeds
-            disabled={!allWildCardDecided}
+            disabled={!allWildCardDecided && !matchup[0] && !matchup[1]}
             locked={lockedGames.divisional[i]}
           />
         ))}
@@ -609,10 +489,10 @@ function ConferenceBracket({
         <Matchup
           high={bracket.championshipMatchup[0]}
           low={bracket.championshipMatchup[1]}
-          winnerId={picks.championship}
+          winnerId={championId}
           onWinnerChange={(id) => onWinnerChange('championship', 0, id)}
           showSeeds
-          disabled={!allDivisionalDecided}
+          disabled={!allDivisionalDecided && !bracket.championshipMatchup[0] && !bracket.championshipMatchup[1]}
           locked={lockedGames.championship}
         />
       </div>
@@ -704,7 +584,7 @@ function TeamSlot({ teamWithSeed, showSeed, isWinner, isLoser, onClick, disabled
       } ${!isInteractive ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {showSeed && (
-        <span className="text-[10px] font-bold text-gray-400 w-3 shrink-0">{seed}</span>
+        <span className="text-[10px] font-bold text-gray-400 w-3 shrink-0">{seed > 0 ? seed : '-'}</span>
       )}
       <img src={team.logo} alt={team.name} className="w-5 h-5 object-contain shrink-0" />
       <span className="text-xs font-medium text-gray-900 dark:text-white flex-1 truncate">

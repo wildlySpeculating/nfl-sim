@@ -1,0 +1,347 @@
+import type { TeamStanding, PlayoffPicks, Team, Game } from '@/types';
+import type { PlayoffGame } from '@/hooks/useEspnApi';
+
+export interface DraftPick {
+  pick: number;
+  team: Team;
+  record: string;
+  reason: string;
+}
+
+// Calculate win percentage for sorting
+function winPct(wins: number, losses: number, ties: number): number {
+  const total = wins + losses + ties;
+  if (total === 0) return 0;
+  return (wins + ties * 0.5) / total;
+}
+
+// Format record string
+function formatRecord(standing: TeamStanding): string {
+  if (standing.ties > 0) {
+    return `${standing.wins}-${standing.losses}-${standing.ties}`;
+  }
+  return `${standing.wins}-${standing.losses}`;
+}
+
+// Calculate Strength of Schedule (SOS) for all teams
+// SOS = average win percentage of all opponents
+function calculateSOS(
+  standings: TeamStanding[],
+  games: Game[]
+): Map<string, number> {
+  const sosMap = new Map<string, number>();
+
+  // First, create a map of team records
+  const teamRecords = new Map<string, { wins: number; losses: number; ties: number }>();
+  for (const standing of standings) {
+    teamRecords.set(standing.team.id, {
+      wins: standing.wins,
+      losses: standing.losses,
+      ties: standing.ties,
+    });
+  }
+
+  // For each team, calculate SOS
+  for (const standing of standings) {
+    const teamId = standing.team.id;
+    const opponentIds = new Set<string>();
+
+    // Find all opponents from completed games
+    for (const game of games) {
+      if (game.status !== 'final') continue;
+
+      if (game.homeTeam.id === teamId) {
+        opponentIds.add(game.awayTeam.id);
+      } else if (game.awayTeam.id === teamId) {
+        opponentIds.add(game.homeTeam.id);
+      }
+    }
+
+    // Calculate average opponent win percentage
+    let totalOpponentWinPct = 0;
+    let opponentCount = 0;
+
+    for (const oppId of opponentIds) {
+      const oppRecord = teamRecords.get(oppId);
+      if (oppRecord) {
+        totalOpponentWinPct += winPct(oppRecord.wins, oppRecord.losses, oppRecord.ties);
+        opponentCount++;
+      }
+    }
+
+    // Lower SOS = weaker opponents = picks earlier
+    const sos = opponentCount > 0 ? totalOpponentWinPct / opponentCount : 0.5;
+    sosMap.set(teamId, sos);
+  }
+
+  return sosMap;
+}
+
+// Sort teams by record (worst first for draft order)
+function sortByRecordWorstFirst(
+  standings: TeamStanding[],
+  sosMap: Map<string, number>
+): TeamStanding[] {
+  return [...standings].sort((a, b) => {
+    // First by win percentage (ascending - worst first)
+    const aWinPct = winPct(a.wins, a.losses, a.ties);
+    const bWinPct = winPct(b.wins, b.losses, b.ties);
+    if (Math.abs(aWinPct - bWinPct) > 0.0001) {
+      return aWinPct - bWinPct;
+    }
+    // Then by strength of schedule (lower SOS = weaker opponents = picks earlier)
+    const aSos = sosMap.get(a.team.id) ?? 0.5;
+    const bSos = sosMap.get(b.team.id) ?? 0.5;
+    return aSos - bSos;
+  });
+}
+
+// Get losers from actual playoff games
+function getLosersFromGames(
+  games: PlayoffGame[],
+  allStandings: TeamStanding[]
+): TeamStanding[] {
+  const losers: TeamStanding[] = [];
+
+  for (const game of games) {
+    if (game.status === 'final' && game.winnerId) {
+      // Find the loser
+      const loserId = game.winnerId === game.homeTeam.id ? game.awayTeam.id : game.homeTeam.id;
+      const loserStanding = allStandings.find(s => s.team.id === loserId);
+      if (loserStanding) {
+        losers.push(loserStanding);
+      }
+    }
+  }
+
+  return losers;
+}
+
+// Get losers from user picks (for games not yet played)
+function getLosersFromPicks(
+  conference: 'afc' | 'nfc',
+  round: 'wildCard' | 'divisional' | 'championship',
+  playoffPicks: PlayoffPicks,
+  playoffGames: PlayoffGame[],
+  allStandings: TeamStanding[]
+): TeamStanding[] {
+  const losers: TeamStanding[] = [];
+
+  // Get games for this round and conference
+  const roundGames = playoffGames.filter(
+    g => g.round === round && g.conference === conference
+  );
+
+  if (round === 'wildCard') {
+    for (let i = 0; i < (playoffPicks[conference].wildCard.length); i++) {
+      const winnerId = playoffPicks[conference].wildCard[i];
+      if (!winnerId) continue;
+
+      // Check if this game already has a real result
+      const game = roundGames[i];
+      if (game && game.status === 'final' && game.winnerId) {
+        continue; // Already counted in real results
+      }
+
+      // Use the pick - find the matchup teams
+      if (game) {
+        const loserId = winnerId === game.homeTeam.id ? game.awayTeam.id : game.homeTeam.id;
+        const loserStanding = allStandings.find(s => s.team.id === loserId);
+        if (loserStanding && !losers.some(l => l.team.id === loserStanding.team.id)) {
+          losers.push(loserStanding);
+        }
+      }
+    }
+  } else if (round === 'divisional') {
+    for (let i = 0; i < (playoffPicks[conference].divisional.length); i++) {
+      const winnerId = playoffPicks[conference].divisional[i];
+      if (!winnerId) continue;
+
+      const game = roundGames[i];
+      if (game && game.status === 'final' && game.winnerId) {
+        continue;
+      }
+
+      if (game) {
+        const loserId = winnerId === game.homeTeam.id ? game.awayTeam.id : game.homeTeam.id;
+        const loserStanding = allStandings.find(s => s.team.id === loserId);
+        if (loserStanding && !losers.some(l => l.team.id === loserStanding.team.id)) {
+          losers.push(loserStanding);
+        }
+      }
+    }
+  } else if (round === 'championship') {
+    const winnerId = playoffPicks[conference].championship;
+    if (!winnerId) return losers;
+
+    const game = roundGames[0];
+    if (game && game.status === 'final' && game.winnerId) {
+      return losers;
+    }
+
+    if (game) {
+      const loserId = winnerId === game.homeTeam.id ? game.awayTeam.id : game.homeTeam.id;
+      const loserStanding = allStandings.find(s => s.team.id === loserId);
+      if (loserStanding) {
+        losers.push(loserStanding);
+      }
+    }
+  }
+
+  return losers;
+}
+
+export function calculateDraftOrder(
+  afcStandings: TeamStanding[],
+  nfcStandings: TeamStanding[],
+  playoffPicks: PlayoffPicks,
+  playoffGames: PlayoffGame[] = [],
+  regularSeasonGames: Game[] = []
+): DraftPick[] {
+  const draftOrder: DraftPick[] = [];
+  let pickNumber = 1;
+
+  // Combine all standings
+  const allStandings = [...afcStandings, ...nfcStandings];
+
+  // Calculate SOS for all teams
+  const sosMap = calculateSOS(allStandings, regularSeasonGames);
+
+  // Organize playoff games by round
+  const gamesByRound = {
+    wildCard: playoffGames.filter(g => g.round === 'wildCard'),
+    divisional: playoffGames.filter(g => g.round === 'divisional'),
+    championship: playoffGames.filter(g => g.round === 'championship'),
+    superBowl: playoffGames.filter(g => g.round === 'superBowl'),
+  };
+
+  // 1. Non-playoff teams (picks 1-18) - worst record first
+  const nonPlayoffTeams = allStandings.filter(s => s.seed === null);
+  const sortedNonPlayoff = sortByRecordWorstFirst(nonPlayoffTeams, sosMap);
+
+  for (const standing of sortedNonPlayoff) {
+    draftOrder.push({
+      pick: pickNumber++,
+      team: standing.team,
+      record: formatRecord(standing),
+      reason: 'Did not make playoffs',
+    });
+  }
+
+  // 2. Wild Card losers (picks 19-24)
+  // First get losers from actual game results
+  const wcLosersFromGames = getLosersFromGames(gamesByRound.wildCard, allStandings);
+  // Then get losers from user picks for games not yet played
+  const wcLosersFromPicks = [
+    ...getLosersFromPicks('afc', 'wildCard', playoffPicks, playoffGames, allStandings),
+    ...getLosersFromPicks('nfc', 'wildCard', playoffPicks, playoffGames, allStandings),
+  ];
+  // Combine and dedupe
+  const allWcLosers = [...wcLosersFromGames];
+  for (const loser of wcLosersFromPicks) {
+    if (!allWcLosers.some(l => l.team.id === loser.team.id)) {
+      allWcLosers.push(loser);
+    }
+  }
+  const sortedWcLosers = sortByRecordWorstFirst(allWcLosers, sosMap);
+
+  for (const standing of sortedWcLosers) {
+    draftOrder.push({
+      pick: pickNumber++,
+      team: standing.team,
+      record: formatRecord(standing),
+      reason: 'Lost in Wild Card',
+    });
+  }
+
+  // 3. Divisional losers (picks 25-28)
+  const divLosersFromGames = getLosersFromGames(gamesByRound.divisional, allStandings);
+  const divLosersFromPicks = [
+    ...getLosersFromPicks('afc', 'divisional', playoffPicks, playoffGames, allStandings),
+    ...getLosersFromPicks('nfc', 'divisional', playoffPicks, playoffGames, allStandings),
+  ];
+  const allDivLosers = [...divLosersFromGames];
+  for (const loser of divLosersFromPicks) {
+    if (!allDivLosers.some(l => l.team.id === loser.team.id)) {
+      allDivLosers.push(loser);
+    }
+  }
+  const sortedDivLosers = sortByRecordWorstFirst(allDivLosers, sosMap);
+
+  for (const standing of sortedDivLosers) {
+    draftOrder.push({
+      pick: pickNumber++,
+      team: standing.team,
+      record: formatRecord(standing),
+      reason: 'Lost in Divisional',
+    });
+  }
+
+  // 4. Conference Championship losers (picks 29-30)
+  const confLosersFromGames = getLosersFromGames(gamesByRound.championship, allStandings);
+  const confLosersFromPicks = [
+    ...getLosersFromPicks('afc', 'championship', playoffPicks, playoffGames, allStandings),
+    ...getLosersFromPicks('nfc', 'championship', playoffPicks, playoffGames, allStandings),
+  ];
+  const allConfLosers = [...confLosersFromGames];
+  for (const loser of confLosersFromPicks) {
+    if (!allConfLosers.some(l => l.team.id === loser.team.id)) {
+      allConfLosers.push(loser);
+    }
+  }
+  const sortedConfLosers = sortByRecordWorstFirst(allConfLosers, sosMap);
+
+  for (const standing of sortedConfLosers) {
+    draftOrder.push({
+      pick: pickNumber++,
+      team: standing.team,
+      record: formatRecord(standing),
+      reason: 'Lost in Conference Championship',
+    });
+  }
+
+  // 5. Super Bowl loser (pick 31) and winner (pick 32)
+  const superBowlGame = gamesByRound.superBowl[0];
+  let sbWinnerId: string | null = null;
+  let sbLoserId: string | null = null;
+
+  if (superBowlGame?.status === 'final' && superBowlGame.winnerId) {
+    // Use actual Super Bowl result
+    sbWinnerId = superBowlGame.winnerId;
+    sbLoserId = sbWinnerId === superBowlGame.homeTeam.id
+      ? superBowlGame.awayTeam.id
+      : superBowlGame.homeTeam.id;
+  } else if (playoffPicks.superBowl) {
+    // Use user's pick
+    sbWinnerId = playoffPicks.superBowl;
+    const afcChamp = playoffPicks.afc.championship;
+    const nfcChamp = playoffPicks.nfc.championship;
+    sbLoserId = sbWinnerId === afcChamp ? nfcChamp : afcChamp;
+  }
+
+  if (sbLoserId) {
+    const loserStanding = allStandings.find(s => s.team.id === sbLoserId);
+    if (loserStanding) {
+      draftOrder.push({
+        pick: pickNumber++,
+        team: loserStanding.team,
+        record: formatRecord(loserStanding),
+        reason: 'Lost Super Bowl',
+      });
+    }
+  }
+
+  if (sbWinnerId) {
+    const winnerStanding = allStandings.find(s => s.team.id === sbWinnerId);
+    if (winnerStanding) {
+      draftOrder.push({
+        pick: pickNumber++,
+        team: winnerStanding.team,
+        record: formatRecord(winnerStanding),
+        reason: 'Won Super Bowl',
+      });
+    }
+  }
+
+  return draftOrder;
+}

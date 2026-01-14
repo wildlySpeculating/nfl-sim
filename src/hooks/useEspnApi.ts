@@ -19,9 +19,24 @@ export interface PlayoffGame {
   winnerId: string | null;
 }
 
+export interface EspnTeamStanding {
+  teamId: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  playoffSeed: number | null;
+  divisionWins: number;
+  divisionLosses: number;
+  conferenceWins: number;
+  conferenceLosses: number;
+  pointsFor: number;
+  pointsAgainst: number;
+}
+
 interface UseEspnApiReturn {
   games: Game[];
   playoffGames: PlayoffGame[];
+  espnStandings: EspnTeamStanding[];
   currentWeek: number;
   isLoading: boolean;
   error: string | null;
@@ -188,9 +203,66 @@ function parsePlayoffGame(event: EspnEvent, round: PlayoffGame['round']): Playof
   }
 }
 
+// Parse ESPN standings response
+interface EspnStandingsEntry {
+  team: { abbreviation: string };
+  stats: { id?: string; name: string; value: number; displayValue?: string }[];
+}
+
+interface EspnStandingsResponse {
+  children: {
+    standings: {
+      entries: EspnStandingsEntry[];
+    };
+  }[];
+}
+
+function parseEspnStandings(data: EspnStandingsResponse): EspnTeamStanding[] {
+  const standings: EspnTeamStanding[] = [];
+
+  for (const division of data.children) {
+    for (const entry of division.standings.entries) {
+      const team = getTeamByAbbreviation(entry.team.abbreviation);
+      if (!team) continue;
+
+      const getStat = (name: string): number => {
+        const stat = entry.stats.find(s => s.name === name);
+        return stat?.value ?? 0;
+      };
+
+      // Parse division record from displayValue (e.g., "5-1")
+      const divRecord = entry.stats.find(s => s.name === 'divisionRecord')?.displayValue || '0-0';
+      const [divWins, divLosses] = divRecord.split('-').map(Number);
+
+      // Parse conference record
+      const confRecord = entry.stats.find(s => s.id === '906')?.displayValue || '0-0';
+      const [confWins, confLosses] = confRecord.split('-').map(Number);
+
+      const playoffSeedValue = getStat('playoffSeed');
+
+      standings.push({
+        teamId: team.id,
+        wins: getStat('wins'),
+        losses: getStat('losses'),
+        ties: getStat('ties'),
+        playoffSeed: playoffSeedValue > 0 && playoffSeedValue <= 7 ? playoffSeedValue : null,
+        divisionWins: divWins || 0,
+        divisionLosses: divLosses || 0,
+        conferenceWins: confWins || 0,
+        conferenceLosses: confLosses || 0,
+        pointsFor: getStat('pointsFor'),
+        pointsAgainst: getStat('pointsAgainst'),
+      });
+    }
+  }
+
+  return standings;
+}
+
 export function useEspnApi(pollInterval = 45000): UseEspnApiReturn {
   const [games, setGames] = useState<Game[]>([]);
   const [playoffGames, setPlayoffGames] = useState<PlayoffGame[]>([]);
+  const [espnStandings, setEspnStandings] = useState<EspnTeamStanding[]>([]);
   const [currentWeek, setCurrentWeek] = useState(18);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -273,6 +345,16 @@ export function useEspnApi(pollInterval = 45000): UseEspnApiReturn {
       await Promise.all(playoffPromises);
       setPlayoffGames(allPlayoffGames);
 
+      // Fetch standings from ESPN
+      try {
+        const standingsUrl = 'https://site.api.espn.com/apis/v2/sports/football/nfl/standings';
+        const standingsData = await fetchWithRetry<EspnStandingsResponse>(standingsUrl);
+        const parsedStandings = parseEspnStandings(standingsData);
+        setEspnStandings(parsedStandings);
+      } catch (e) {
+        console.error('Error fetching standings:', e);
+      }
+
       setLastUpdated(new Date());
       setIsStale(false);
     } catch (e) {
@@ -323,6 +405,7 @@ export function useEspnApi(pollInterval = 45000): UseEspnApiReturn {
   return {
     games,
     playoffGames,
+    espnStandings,
     currentWeek,
     isLoading,
     error,

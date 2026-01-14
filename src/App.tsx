@@ -8,6 +8,7 @@ import { GameViewToggle } from '@/components/layout/GameViewToggle';
 import { WeekView } from '@/components/games/WeekView';
 import { TeamView } from '@/components/games/TeamView';
 import { StandingsPanel } from '@/components/standings/StandingsPanel';
+import { DraftOrder } from '@/components/standings/DraftOrder';
 import { PlayoffBracket } from '@/components/bracket/PlayoffBracket';
 import { ConflictModal } from '@/components/modals/ConflictModal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -23,7 +24,7 @@ function App() {
   const [pendingSelections, setPendingSelections] = useState<Record<string, GameSelection>>({});
 
   // Data fetching
-  const { games, playoffGames, currentWeek, isLoading, error, isStale, lastUpdated, refresh } = useEspnApi();
+  const { games, playoffGames, espnStandings, currentWeek, isLoading, error, isStale, lastUpdated, refresh } = useEspnApi();
 
   // Set selected week to current week once loaded
   useEffect(() => {
@@ -47,7 +48,7 @@ function App() {
   } = useScenario();
 
   // Standings calculation
-  const { afcStandings, nfcStandings, getTeamStanding } = useStandings(games, selections);
+  const { afcStandings, nfcStandings, getTeamStanding } = useStandings(games, selections, espnStandings);
 
   // URL state management
   const handleStateLoad = useCallback((state: { selections: Record<string, GameSelection>; playoffPicks: PlayoffPicks }) => {
@@ -203,6 +204,15 @@ function App() {
             <StandingsPanel
               afcStandings={afcStandings}
               nfcStandings={nfcStandings}
+            />
+
+            {/* Draft Order */}
+            <DraftOrder
+              afcStandings={afcStandings}
+              nfcStandings={nfcStandings}
+              playoffPicks={playoffPicks}
+              playoffGames={playoffGames}
+              games={games}
             />
           </div>
         </div>

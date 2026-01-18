@@ -227,6 +227,18 @@ function getLosersFromPicks(
   );
 
   if (round === 'wildCard') {
+    // Get conference standings for fallback matchup determination
+    const confStandings = conference === 'afc'
+      ? allStandings.filter(s => s.team.conference === 'AFC')
+      : allStandings.filter(s => s.team.conference === 'NFC');
+
+    // Standard wild card matchups based on seeding: 2v7, 3v6, 4v5
+    const wcMatchups = [
+      { high: 2, low: 7 },
+      { high: 3, low: 6 },
+      { high: 4, low: 5 },
+    ];
+
     for (let i = 0; i < (playoffPicks[conference].wildCard.length); i++) {
       const winnerId = playoffPicks[conference].wildCard[i];
       if (!winnerId) continue;
@@ -243,6 +255,28 @@ function getLosersFromPicks(
         const loserStanding = allStandings.find(s => s.team.id === loserId);
         if (loserStanding && !losers.some(l => l.team.id === loserStanding.team.id)) {
           losers.push(loserStanding);
+        }
+      } else {
+        // No game defined - determine loser from seeding
+        // Wild card matchups are 2v7, 3v6, 4v5
+        const matchup = wcMatchups[i];
+        if (matchup) {
+          const highSeed = confStandings.find(s => s.seed === matchup.high);
+          const lowSeed = confStandings.find(s => s.seed === matchup.low);
+
+          let loserId: string | null = null;
+          if (highSeed && highSeed.team.id === winnerId && lowSeed) {
+            loserId = lowSeed.team.id;
+          } else if (lowSeed && lowSeed.team.id === winnerId && highSeed) {
+            loserId = highSeed.team.id;
+          }
+
+          if (loserId) {
+            const loserStanding = allStandings.find(s => s.team.id === loserId);
+            if (loserStanding && !losers.some(l => l.team.id === loserStanding.team.id)) {
+              losers.push(loserStanding);
+            }
+          }
         }
       }
     }

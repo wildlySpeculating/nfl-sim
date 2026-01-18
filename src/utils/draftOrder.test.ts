@@ -1985,4 +1985,106 @@ describe('Phase 11: Draft Order Edge Cases', () => {
     expect(nonPlayoff[1].record).toBe('4-13');
     expect(nonPlayoff[2].record).toBe('5-12');
   });
+
+  it('REGRESSION: should determine wild card losers from seeding when no ESPN games exist', () => {
+    // This test covers the bug where wild card losers were missing from draft order
+    // when ESPN playoff game data wasn't available yet (e.g., Rams vs Bears WC game)
+    // The fix is to infer the loser from the seeded matchups (2v7, 3v6, 4v5)
+
+    // Create AFC teams with seeds 1-7
+    const afcTeams = Array.from({ length: 9 }, (_, i) =>
+      createTeam(`afc${i + 1}`, `AFC${i + 1}`, 'AFC')
+    );
+    // Create NFC teams with seeds 1-7 plus non-playoff teams
+    const nfcTeams = Array.from({ length: 9 }, (_, i) =>
+      createTeam(`nfc${i + 1}`, `NFC${i + 1}`, 'NFC')
+    );
+
+    // Create standings - 7 playoff teams per conference + 2 non-playoff
+    const afcStandings: TeamStanding[] = [
+      createStanding(afcTeams[0], 14, 3, 1),  // Seed 1
+      createStanding(afcTeams[1], 13, 4, 2),  // Seed 2
+      createStanding(afcTeams[2], 12, 5, 3),  // Seed 3
+      createStanding(afcTeams[3], 11, 6, 4),  // Seed 4
+      createStanding(afcTeams[4], 10, 7, 5),  // Seed 5
+      createStanding(afcTeams[5], 9, 8, 6),   // Seed 6
+      createStanding(afcTeams[6], 8, 9, 7),   // Seed 7
+      createStanding(afcTeams[7], 4, 13, null), // Non-playoff
+      createStanding(afcTeams[8], 3, 14, null), // Non-playoff
+    ];
+
+    const nfcStandings: TeamStanding[] = [
+      createStanding(nfcTeams[0], 15, 2, 1),  // Seed 1
+      createStanding(nfcTeams[1], 12, 5, 2),  // Seed 2
+      createStanding(nfcTeams[2], 11, 6, 3),  // Seed 3
+      createStanding(nfcTeams[3], 10, 7, 4),  // Seed 4
+      createStanding(nfcTeams[4], 9, 8, 5),   // Seed 5
+      createStanding(nfcTeams[5], 8, 9, 6),   // Seed 6
+      createStanding(nfcTeams[6], 7, 10, 7),  // Seed 7
+      createStanding(nfcTeams[7], 5, 12, null), // Non-playoff
+      createStanding(nfcTeams[8], 4, 13, null), // Non-playoff
+    ];
+
+    // NO ESPN playoff games - only user picks
+    const playoffGames: PlayoffGame[] = [];
+
+    // User picks: higher seeds win all wild card games
+    // AFC: 2 beats 7, 3 beats 6, 4 beats 5
+    // NFC: 2 beats 7, 3 beats 6, 4 beats 5
+    const playoffPicks: PlayoffPicks = {
+      afc: {
+        wildCard: [afcTeams[1].id, afcTeams[2].id, afcTeams[3].id], // Seeds 2, 3, 4 win
+        divisional: [afcTeams[0].id, afcTeams[1].id], // Seeds 1, 2 win
+        championship: afcTeams[0].id, // Seed 1 wins
+      },
+      nfc: {
+        wildCard: [nfcTeams[1].id, nfcTeams[2].id, nfcTeams[3].id], // Seeds 2, 3, 4 win
+        divisional: [nfcTeams[0].id, nfcTeams[1].id], // Seeds 1, 2 win
+        championship: nfcTeams[0].id, // Seed 1 wins
+      },
+      superBowl: afcTeams[0].id,
+    };
+
+    const result = calculateDraftOrder(
+      afcStandings,
+      nfcStandings,
+      playoffPicks,
+      playoffGames
+    );
+
+    // Should have all 18 picks (4 non-playoff + 6 WC + 4 div + 2 conf + 1 SB loser + 1 SB winner)
+    // Note: Only 18 teams total in this test (9 per conference)
+    expect(result.length).toBe(18);
+
+    // Check non-playoff teams
+    const nonPlayoff = result.filter(p => p.reason === 'Did not make playoffs');
+    expect(nonPlayoff.length).toBe(4);
+
+    // Check Wild Card losers - should be seeds 5, 6, 7 from each conference
+    // This is the key regression test - without the fix, WC losers were missing
+    const wcLosers = result.filter(p => p.reason === 'Lost in Wild Card');
+    expect(wcLosers.length).toBe(6);
+
+    // All WC losers should be the lower seeds (5, 6, 7)
+    const wcLoserIds = wcLosers.map(l => l.team.id);
+    expect(wcLoserIds).toContain(afcTeams[4].id); // AFC seed 5
+    expect(wcLoserIds).toContain(afcTeams[5].id); // AFC seed 6
+    expect(wcLoserIds).toContain(afcTeams[6].id); // AFC seed 7
+    expect(wcLoserIds).toContain(nfcTeams[4].id); // NFC seed 5
+    expect(wcLoserIds).toContain(nfcTeams[5].id); // NFC seed 6
+    expect(wcLoserIds).toContain(nfcTeams[6].id); // NFC seed 7
+
+    // Check all other rounds are represented
+    const divLosers = result.filter(p => p.reason === 'Lost in Divisional');
+    expect(divLosers.length).toBe(4);
+
+    const confLosers = result.filter(p => p.reason === 'Lost in Conference Championship');
+    expect(confLosers.length).toBe(2);
+
+    const sbLoser = result.filter(p => p.reason === 'Lost Super Bowl');
+    expect(sbLoser.length).toBe(1);
+
+    const sbWinner = result.filter(p => p.reason === 'Won Super Bowl');
+    expect(sbWinner.length).toBe(1);
+  });
 });

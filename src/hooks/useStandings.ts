@@ -57,7 +57,11 @@ export function useStandings(
               streak,
               lastFive,
               isEliminated: s.playoffSeed === null,
-              clinched: s.playoffSeed === 1 ? 'bye' as const : s.playoffSeed !== null ? 'playoff' as const : null,
+              // Seeds 1-4 are division winners, 5-7 are wild cards
+              clinched: s.playoffSeed === 1 ? 'bye' as const
+                : (s.playoffSeed !== null && s.playoffSeed <= 4) ? 'division' as const
+                : s.playoffSeed !== null ? 'playoff' as const
+                : null,
               seed: s.playoffSeed,
               magicNumber: null,
             };

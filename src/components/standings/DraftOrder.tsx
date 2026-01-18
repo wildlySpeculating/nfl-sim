@@ -187,8 +187,8 @@ function DraftPickRow({ pick }: DraftPickRowProps) {
     >
       {/* Pick number */}
       <div className="col-span-1">
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-          {pick.pick}
+        <span className={`text-xs font-medium ${pick.pickMax ? 'text-amber-600 dark:text-amber-400' : 'text-gray-700 dark:text-gray-300'}`}>
+          {pick.pickMax ? `${pick.pick}-${pick.pickMax}` : pick.pick}
         </span>
       </div>
 

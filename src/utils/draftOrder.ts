@@ -3,6 +3,7 @@ import type { PlayoffGame } from '@/hooks/useEspnApi';
 
 export interface DraftPick {
   pick: number;
+  pickMax?: number; // If set, pick is uncertain and could be anywhere from pick to pickMax
   team: Team;
   record: string;
   reason: string;
@@ -94,6 +95,99 @@ function sortByRecordWorstFirst(
     const bSos = sosMap.get(b.team.id) ?? 0.5;
     return aSos - bSos;
   });
+}
+
+// Compare two teams for draft order (returns negative if a picks before b)
+function compareForDraftOrder(
+  a: TeamStanding,
+  b: TeamStanding,
+  sosMap: Map<string, number>
+): number {
+  const aWinPct = winPct(a.wins, a.losses, a.ties);
+  const bWinPct = winPct(b.wins, b.losses, b.ties);
+  if (Math.abs(aWinPct - bWinPct) > 0.0001) {
+    return aWinPct - bWinPct;
+  }
+  const aSos = sosMap.get(a.team.id) ?? 0.5;
+  const bSos = sosMap.get(b.team.id) ?? 0.5;
+  return aSos - bSos;
+}
+
+// Get all teams participating in a round's games (potential losers)
+function getAllParticipants(
+  games: PlayoffGame[],
+  allStandings: TeamStanding[]
+): TeamStanding[] {
+  const participants: TeamStanding[] = [];
+  const seenIds = new Set<string>();
+
+  for (const game of games) {
+    if (!seenIds.has(game.homeTeam.id)) {
+      const standing = allStandings.find(s => s.team.id === game.homeTeam.id);
+      if (standing) {
+        participants.push(standing);
+        seenIds.add(game.homeTeam.id);
+      }
+    }
+    if (!seenIds.has(game.awayTeam.id)) {
+      const standing = allStandings.find(s => s.team.id === game.awayTeam.id);
+      if (standing) {
+        participants.push(standing);
+        seenIds.add(game.awayTeam.id);
+      }
+    }
+  }
+
+  return participants;
+}
+
+// Calculate pick range for a known loser considering all potential losers
+// Returns [minPick, maxPick] relative to the round (0-indexed)
+function calculatePickRange(
+  loser: TeamStanding,
+  knownLosers: TeamStanding[],
+  allPotentialLosers: TeamStanding[],
+  totalLosersInRound: number,
+  sosMap: Map<string, number>
+): { min: number; max: number } {
+  // How many known losers have worse records than this loser?
+  const knownWorse = knownLosers.filter(
+    l => l.team.id !== loser.team.id && compareForDraftOrder(l, loser, sosMap) < 0
+  ).length;
+
+  // How many known losers have better records?
+  const knownBetter = knownLosers.filter(
+    l => l.team.id !== loser.team.id && compareForDraftOrder(l, loser, sosMap) > 0
+  ).length;
+
+  // How many potential losers (not yet known) have worse records?
+  const unknownPotential = allPotentialLosers.filter(
+    p => !knownLosers.some(k => k.team.id === p.team.id)
+  );
+  const unknownWorse = unknownPotential.filter(
+    p => compareForDraftOrder(p, loser, sosMap) < 0
+  ).length;
+  const unknownBetter = unknownPotential.filter(
+    p => compareForDraftOrder(p, loser, sosMap) > 0
+  ).length;
+
+  // Best case: all unknowns with worse records lose, pushing this loser back
+  // Worst case: all unknowns with better records lose, this loser picks earlier
+
+  // Min pick position = knownWorse (locked in) + 0 (no additional worse teams lose)
+  // But capped by the number of slots available
+  const minPosition = knownWorse;
+
+  // Max pick position = could be pushed back by unknowns with worse records
+  // But capped at totalLosersInRound - 1 - knownBetter
+  const slotsRemaining = totalLosersInRound - knownLosers.length;
+  const maxFromUnknown = Math.min(unknownWorse, slotsRemaining);
+  const maxPosition = Math.min(
+    knownWorse + maxFromUnknown,
+    totalLosersInRound - 1 - knownBetter
+  );
+
+  return { min: minPosition, max: maxPosition };
 }
 
 // Get losers from actual playoff games
@@ -266,18 +360,45 @@ export function calculateDraftOrder(
       allDivLosers.push(loser);
     }
   }
+
+  // Get all potential divisional losers for range calculation
+  const allDivParticipants = getAllParticipants(gamesByRound.divisional, allStandings);
+  const divRoundStartPick = pickNumber;
+
+  // Sort known losers and calculate ranges
   const sortedDivLosers = sortByRecordWorstFirst(allDivLosers, sosMap);
+  const haveAllDivLosers = allDivLosers.length === 4;
 
   for (const standing of sortedDivLosers) {
-    draftOrder.push({
-      pick: pickNumber++,
-      team: standing.team,
-      record: formatRecord(standing),
-      reason: 'Lost in Divisional',
-    });
+    if (haveAllDivLosers) {
+      // All losers known, pick is definitive
+      draftOrder.push({
+        pick: pickNumber++,
+        team: standing.team,
+        record: formatRecord(standing),
+        reason: 'Lost in Divisional',
+      });
+    } else {
+      // Calculate range considering all potential losers
+      const range = calculatePickRange(standing, allDivLosers, allDivParticipants, 4, sosMap);
+      const minPick = divRoundStartPick + range.min;
+      const maxPick = divRoundStartPick + range.max;
+
+      draftOrder.push({
+        pick: minPick,
+        pickMax: minPick !== maxPick ? maxPick : undefined,
+        team: standing.team,
+        record: formatRecord(standing),
+        reason: 'Lost in Divisional',
+      });
+      pickNumber++;
+    }
   }
 
   // 4. Conference Championship losers (picks 29-30)
+  // Advance pickNumber to account for remaining divisional slots
+  pickNumber = divRoundStartPick + 4;
+
   const confLosersFromGames = getLosersFromGames(gamesByRound.championship, allStandings);
   const confLosersFromPicks = [
     ...getLosersFromPicks('afc', 'championship', playoffPicks, playoffGames, allStandings),
@@ -289,15 +410,36 @@ export function calculateDraftOrder(
       allConfLosers.push(loser);
     }
   }
+
+  // Get all potential conference championship losers
+  const allConfParticipants = getAllParticipants(gamesByRound.championship, allStandings);
+  const confRoundStartPick = pickNumber;
+
   const sortedConfLosers = sortByRecordWorstFirst(allConfLosers, sosMap);
+  const haveAllConfLosers = allConfLosers.length === 2;
 
   for (const standing of sortedConfLosers) {
-    draftOrder.push({
-      pick: pickNumber++,
-      team: standing.team,
-      record: formatRecord(standing),
-      reason: 'Lost in Conference Championship',
-    });
+    if (haveAllConfLosers) {
+      draftOrder.push({
+        pick: pickNumber++,
+        team: standing.team,
+        record: formatRecord(standing),
+        reason: 'Lost in Conference Championship',
+      });
+    } else {
+      const range = calculatePickRange(standing, allConfLosers, allConfParticipants, 2, sosMap);
+      const minPick = confRoundStartPick + range.min;
+      const maxPick = confRoundStartPick + range.max;
+
+      draftOrder.push({
+        pick: minPick,
+        pickMax: minPick !== maxPick ? maxPick : undefined,
+        team: standing.team,
+        record: formatRecord(standing),
+        reason: 'Lost in Conference Championship',
+      });
+      pickNumber++;
+    }
   }
 
   // 5. Super Bowl loser (pick 31) and winner (pick 32)

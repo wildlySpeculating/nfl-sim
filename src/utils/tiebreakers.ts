@@ -74,6 +74,7 @@ function getGameResult(
 }
 
 // Calculate record in common games
+// NFL rule: "Record against common opponents (minimum of four games)"
 function getCommonGamesRecord(
   team: Team,
   opponents: Team[],
@@ -102,11 +103,6 @@ function getCommonGamesRecord(
     ));
   }
 
-  // Minimum 4 common games required
-  if (commonOpponents.size < 4) {
-    return { wins: 0, losses: 0, ties: 0 };
-  }
-
   // Calculate record against common opponents
   let wins = 0, losses = 0, ties = 0;
   const record = allTeamRecords.get(team.id);
@@ -122,10 +118,18 @@ function getCommonGamesRecord(
     else if (result === 'tie') ties++;
   }
 
+  // Minimum 4 common GAMES required (not 4 common opponents)
+  const totalGames = wins + losses + ties;
+  if (totalGames < 4) {
+    return { wins: 0, losses: 0, ties: 0 };
+  }
+
   return { wins, losses, ties };
 }
 
 // Calculate strength of victory (combined record of teams beaten)
+// NFL rule: Sum the records of all teams you defeated, counting each WIN separately
+// (if you beat a team twice, count their record twice)
 function getStrengthOfVictory(
   team: Team,
   allTeamRecords: Map<string, TeamRecord>,
@@ -136,18 +140,15 @@ function getStrengthOfVictory(
   if (!record) return 0;
 
   let totalWins = 0, totalLosses = 0, totalTies = 0;
-  const beatenTeams = new Set<string>();
 
   for (const game of record.gamesPlayed) {
     const result = getGameResult(game, team, selections);
     if (result !== 'win') continue;
 
     const opponent = game.homeTeam.id === team.id ? game.awayTeam : game.homeTeam;
-    if (beatenTeams.has(opponent.id)) continue;
-    beatenTeams.add(opponent.id);
-
     const opponentRecord = allTeamRecords.get(opponent.id);
     if (opponentRecord) {
+      // Count each win separately - if you beat a team twice, add their record twice
       totalWins += opponentRecord.wins;
       totalLosses += opponentRecord.losses;
       totalTies += opponentRecord.ties;
@@ -158,6 +159,8 @@ function getStrengthOfVictory(
 }
 
 // Calculate strength of schedule (combined record of all opponents)
+// NFL rule: Sum the records of all opponents, counting each GAME separately
+// (if you play a team twice, count their record twice)
 function getStrengthOfSchedule(
   team: Team,
   allTeamRecords: Map<string, TeamRecord>
@@ -166,15 +169,12 @@ function getStrengthOfSchedule(
   if (!record) return 0;
 
   let totalWins = 0, totalLosses = 0, totalTies = 0;
-  const opponents = new Set<string>();
 
   for (const game of record.gamesPlayed) {
     const opponent = game.homeTeam.id === team.id ? game.awayTeam : game.homeTeam;
-    if (opponents.has(opponent.id)) continue;
-    opponents.add(opponent.id);
-
     const opponentRecord = allTeamRecords.get(opponent.id);
     if (opponentRecord) {
+      // Count each game separately - if you play a team twice, add their record twice
       totalWins += opponentRecord.wins;
       totalLosses += opponentRecord.losses;
       totalTies += opponentRecord.ties;
@@ -213,6 +213,52 @@ function getPointsRanking(
   return pfRank + paRank; // Lower is better
 }
 
+/**
+ * Groups teams by a numeric value, recursively breaks ties within each group,
+ * and returns teams ordered from best (highest value) to worst (lowest value).
+ * Used to handle partial separation in multi-team ties.
+ */
+function groupAndResolveTies(
+  teams: Team[],
+  getValue: (team: Team) => number,
+  recursiveBreak: (group: Team[]) => Team[]
+): Team[] | null {
+  if (teams.length <= 1) return teams;
+
+  // Group teams by value
+  const groups = new Map<number, Team[]>();
+  for (const team of teams) {
+    const value = getValue(team);
+    // Round to avoid floating point issues
+    const roundedValue = Math.round(value * 10000) / 10000;
+    if (!groups.has(roundedValue)) {
+      groups.set(roundedValue, []);
+    }
+    groups.get(roundedValue)!.push(team);
+  }
+
+  // If all teams have the same value, no separation occurred
+  if (groups.size === 1) {
+    return null;
+  }
+
+  // Sort group keys descending (best first)
+  const sortedKeys = [...groups.keys()].sort((a, b) => b - a);
+
+  // Recursively break ties within each group and concatenate
+  const result: Team[] = [];
+  for (const key of sortedKeys) {
+    const group = groups.get(key)!;
+    if (group.length === 1) {
+      result.push(group[0]);
+    } else {
+      result.push(...recursiveBreak(group));
+    }
+  }
+
+  return result;
+}
+
 // Main tiebreaker function
 export function breakTie(
   teams: Team[],
@@ -233,47 +279,55 @@ export function breakTie(
     h2hResults.set(team.id, h2h);
 
     // Check if they've played all opponents
-    const expectedGames = isDivisionTie ? others.length * 2 : others.length; // Division teams play twice
-    if (h2h.wins + h2h.losses + h2h.ties < (isDivisionTie ? others.length : 1)) {
+    // For division ties: need to have played each opponent (at least once)
+    // For wild card ties: need to have played each opponent (at least once)
+    // This ensures head-to-head only applies when ALL teams have played EACH OTHER
+    const minGamesRequired = others.length;
+    if (h2h.wins + h2h.losses + h2h.ties < minGamesRequired) {
       allPlayedEachOther = false;
     }
   }
 
   if (allPlayedEachOther) {
-    const sorted = [...teams].sort((a, b) => {
-      const aH2h = h2hResults.get(a.id)!;
-      const bH2h = h2hResults.get(b.id)!;
-      return winPct(bH2h.wins, bH2h.losses, bH2h.ties) -
-             winPct(aH2h.wins, aH2h.losses, aH2h.ties);
-    });
-
-    // If there's a clear winner, return
-    const firstH2h = h2hResults.get(sorted[0].id)!;
-    const secondH2h = h2hResults.get(sorted[1].id)!;
-    if (winPct(firstH2h.wins, firstH2h.losses, firstH2h.ties) >
-        winPct(secondH2h.wins, secondH2h.losses, secondH2h.ties)) {
-      return sorted;
-    }
+    const h2hResult = groupAndResolveTies(
+      teams,
+      (team) => {
+        const h2h = h2hResults.get(team.id)!;
+        return winPct(h2h.wins, h2h.losses, h2h.ties);
+      },
+      (group) => breakTie(group, allTeamRecords, games, selections, isDivisionTie)
+    );
+    if (h2hResult) return h2hResult;
   }
 
   // Step 2: Division record (for division ties only)
   if (isDivisionTie) {
-    const sorted = [...teams].sort((a, b) => {
-      const aRec = allTeamRecords.get(a.id)!;
-      const bRec = allTeamRecords.get(b.id)!;
-      return winPct(bRec.divisionWins, bRec.divisionLosses, bRec.divisionTies) -
-             winPct(aRec.divisionWins, aRec.divisionLosses, aRec.divisionTies);
-    });
-
-    const first = allTeamRecords.get(sorted[0].id)!;
-    const second = allTeamRecords.get(sorted[1].id)!;
-    if (winPct(first.divisionWins, first.divisionLosses, first.divisionTies) >
-        winPct(second.divisionWins, second.divisionLosses, second.divisionTies)) {
-      return sorted;
-    }
+    const divResult = groupAndResolveTies(
+      teams,
+      (team) => {
+        const rec = allTeamRecords.get(team.id)!;
+        return winPct(rec.divisionWins, rec.divisionLosses, rec.divisionTies);
+      },
+      (group) => breakTie(group, allTeamRecords, games, selections, isDivisionTie)
+    );
+    if (divResult) return divResult;
   }
 
-  // Step 3: Common games
+  // Step 3 (wild card) / Step 4 (division): Conference record
+  // For wild card ties, conference record comes BEFORE common games per NFL rules
+  if (!isDivisionTie) {
+    const confResult = groupAndResolveTies(
+      teams,
+      (team) => {
+        const rec = allTeamRecords.get(team.id)!;
+        return winPct(rec.conferenceWins, rec.conferenceLosses, rec.conferenceTies);
+      },
+      (group) => breakTie(group, allTeamRecords, games, selections, isDivisionTie)
+    );
+    if (confResult) return confResult;
+  }
+
+  // Step 3 (division) / Step 4 (wild card): Common games
   const commonResults: Map<string, { wins: number; losses: number; ties: number }> = new Map();
   for (const team of teams) {
     const others = teams.filter(t => t.id !== team.id);
@@ -282,76 +336,72 @@ export function breakTie(
 
   const hasCommonGames = [...commonResults.values()].some(r => r.wins + r.losses + r.ties >= 4);
   if (hasCommonGames) {
-    const sorted = [...teams].sort((a, b) => {
-      const aCommon = commonResults.get(a.id)!;
-      const bCommon = commonResults.get(b.id)!;
-      return winPct(bCommon.wins, bCommon.losses, bCommon.ties) -
-             winPct(aCommon.wins, aCommon.losses, aCommon.ties);
-    });
-
-    const firstCommon = commonResults.get(sorted[0].id)!;
-    const secondCommon = commonResults.get(sorted[1].id)!;
-    if (winPct(firstCommon.wins, firstCommon.losses, firstCommon.ties) >
-        winPct(secondCommon.wins, secondCommon.losses, secondCommon.ties)) {
-      return sorted;
-    }
+    const commonResult = groupAndResolveTies(
+      teams,
+      (team) => {
+        const common = commonResults.get(team.id)!;
+        return winPct(common.wins, common.losses, common.ties);
+      },
+      (group) => breakTie(group, allTeamRecords, games, selections, isDivisionTie)
+    );
+    if (commonResult) return commonResult;
   }
 
-  // Step 4: Conference record
-  const sorted = [...teams].sort((a, b) => {
-    const aRec = allTeamRecords.get(a.id)!;
-    const bRec = allTeamRecords.get(b.id)!;
-    return winPct(bRec.conferenceWins, bRec.conferenceLosses, bRec.conferenceTies) -
-           winPct(aRec.conferenceWins, aRec.conferenceLosses, aRec.conferenceTies);
-  });
-
-  const firstConf = allTeamRecords.get(sorted[0].id)!;
-  const secondConf = allTeamRecords.get(sorted[1].id)!;
-  if (winPct(firstConf.conferenceWins, firstConf.conferenceLosses, firstConf.conferenceTies) >
-      winPct(secondConf.conferenceWins, secondConf.conferenceLosses, secondConf.conferenceTies)) {
-    return sorted;
+  // Step 4 (division only): Conference record (already handled above for wild card)
+  if (isDivisionTie) {
+    const confResult = groupAndResolveTies(
+      teams,
+      (team) => {
+        const rec = allTeamRecords.get(team.id)!;
+        return winPct(rec.conferenceWins, rec.conferenceLosses, rec.conferenceTies);
+      },
+      (group) => breakTie(group, allTeamRecords, games, selections, isDivisionTie)
+    );
+    if (confResult) return confResult;
   }
 
   // Step 5: Strength of victory
-  const sovSorted = [...teams].sort((a, b) => {
-    return getStrengthOfVictory(b, allTeamRecords, games, selections) -
-           getStrengthOfVictory(a, allTeamRecords, games, selections);
-  });
-
-  const firstSov = getStrengthOfVictory(sovSorted[0], allTeamRecords, games, selections);
-  const secondSov = getStrengthOfVictory(sovSorted[1], allTeamRecords, games, selections);
-  if (Math.abs(firstSov - secondSov) > 0.001) {
-    return sovSorted;
-  }
+  const sovResult = groupAndResolveTies(
+    teams,
+    (team) => getStrengthOfVictory(team, allTeamRecords, games, selections),
+    (group) => breakTie(group, allTeamRecords, games, selections, isDivisionTie)
+  );
+  if (sovResult) return sovResult;
 
   // Step 6: Strength of schedule
-  const sosSorted = [...teams].sort((a, b) => {
-    return getStrengthOfSchedule(b, allTeamRecords) -
-           getStrengthOfSchedule(a, allTeamRecords);
-  });
+  const sosResult = groupAndResolveTies(
+    teams,
+    (team) => getStrengthOfSchedule(team, allTeamRecords),
+    (group) => breakTie(group, allTeamRecords, games, selections, isDivisionTie)
+  );
+  if (sosResult) return sosResult;
 
-  const firstSos = getStrengthOfSchedule(sosSorted[0], allTeamRecords);
-  const secondSos = getStrengthOfSchedule(sosSorted[1], allTeamRecords);
-  if (Math.abs(firstSos - secondSos) > 0.001) {
-    return sosSorted;
-  }
-
-  // Step 7: Conference points ranking
+  // Step 7: Conference points ranking (lower is better, so negate)
   const conferenceTeams = getTeamsByConference(teams[0].conference);
-  const rankingSorted = [...teams].sort((a, b) => {
-    return getPointsRanking(a, conferenceTeams, allTeamRecords) -
-           getPointsRanking(b, conferenceTeams, allTeamRecords);
-  });
+  const rankingResult = groupAndResolveTies(
+    teams,
+    (team) => -getPointsRanking(team, conferenceTeams, allTeamRecords), // Negate because lower ranking is better
+    (group) => breakTie(group, allTeamRecords, games, selections, isDivisionTie)
+  );
+  if (rankingResult) return rankingResult;
 
   // Step 8-11: Net points tiebreakers (simplified to point differential)
-  const pointDiffSorted = [...teams].sort((a, b) => {
+  const pointDiffResult = groupAndResolveTies(
+    teams,
+    (team) => {
+      const rec = allTeamRecords.get(team.id)!;
+      return rec.pointsFor - rec.pointsAgainst;
+    },
+    (group) => breakTie(group, allTeamRecords, games, selections, isDivisionTie)
+  );
+  if (pointDiffResult) return pointDiffResult;
+
+  // Final fallback: sort by point differential (if still tied, order is arbitrary)
+  return [...teams].sort((a, b) => {
     const aRec = allTeamRecords.get(a.id)!;
     const bRec = allTeamRecords.get(b.id)!;
     return (bRec.pointsFor - bRec.pointsAgainst) - (aRec.pointsFor - aRec.pointsAgainst);
   });
-
-  // Return point differential sorted (or random if still tied)
-  return pointDiffSorted;
 }
 
 // Calculate all team records from games and selections
@@ -468,6 +518,128 @@ export function calculateTeamRecords(
   return records;
 }
 
+// Helper function to sort teams with proper tiebreaker application
+function sortTeamsWithTiebreakers(
+  teams: Team[],
+  allRecords: Map<string, TeamRecord>,
+  games: Game[],
+  selections: Record<string, GameSelection>,
+  isDivisionTie: boolean
+): Team[] {
+  if (teams.length <= 1) return teams;
+
+  // First sort by win percentage
+  const sorted = [...teams].sort((a, b) => {
+    const aRec = allRecords.get(a.id)!;
+    const bRec = allRecords.get(b.id)!;
+    return winPct(bRec.wins, bRec.losses, bRec.ties) -
+           winPct(aRec.wins, aRec.losses, aRec.ties);
+  });
+
+  // Group teams by win percentage
+  const groups: Team[][] = [];
+  let currentGroup: Team[] = [];
+  let currentPct = -1;
+
+  for (const team of sorted) {
+    const rec = allRecords.get(team.id)!;
+    const pct = winPct(rec.wins, rec.losses, rec.ties);
+
+    if (Math.abs(pct - currentPct) < 0.001) {
+      currentGroup.push(team);
+    } else {
+      if (currentGroup.length > 0) {
+        groups.push(currentGroup);
+      }
+      currentGroup = [team];
+      currentPct = pct;
+    }
+  }
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  // Apply tiebreakers to each group and flatten
+  const result: Team[] = [];
+  for (const group of groups) {
+    if (group.length === 1) {
+      result.push(group[0]);
+    } else {
+      // For wild card seeding, check if any teams are from the same division
+      // If so, apply division tiebreaker first between those teams
+      if (!isDivisionTie) {
+        const resolved = resolveWildCardTies(group, allRecords, games, selections);
+        result.push(...resolved);
+      } else {
+        const broken = breakTie(group, allRecords, games, selections, isDivisionTie);
+        result.push(...broken);
+      }
+    }
+  }
+
+  return result;
+}
+
+// Resolve wild card ties, handling same-division teams specially
+function resolveWildCardTies(
+  teams: Team[],
+  allRecords: Map<string, TeamRecord>,
+  games: Game[],
+  selections: Record<string, GameSelection>
+): Team[] {
+  if (teams.length <= 1) return teams;
+
+  // Group teams by division
+  const byDivision = new Map<string, Team[]>();
+  for (const team of teams) {
+    const div = team.division;
+    if (!byDivision.has(div)) {
+      byDivision.set(div, []);
+    }
+    byDivision.get(div)!.push(team);
+  }
+
+  // If all teams from different divisions, use standard wild card tiebreaker
+  if (byDivision.size === teams.length) {
+    return breakTie(teams, allRecords, games, selections, false);
+  }
+
+  // Handle same-division teams: apply division tiebreaker to rank them
+  // Store the full ranked order for each division
+  const divisionRankings = new Map<string, Team[]>();
+
+  for (const [div, divTeams] of byDivision) {
+    if (divTeams.length === 1) {
+      divisionRankings.set(div, divTeams);
+    } else {
+      // Apply division tiebreaker to same-division teams
+      const ranked = breakTie(divTeams, allRecords, games, selections, true);
+      divisionRankings.set(div, ranked);
+    }
+  }
+
+  // Get the best team from each division for wild card comparison
+  const divisionBests: Team[] = [];
+  for (const [, ranked] of divisionRankings) {
+    divisionBests.push(ranked[0]);
+  }
+
+  // Sort division bests using wild card tiebreaker
+  const sortedBests = divisionBests.length > 1
+    ? breakTie(divisionBests, allRecords, games, selections, false)
+    : divisionBests;
+
+  // Build final result: for each division best, add all teams from that division
+  // in their division-tiebreaker order
+  const result: Team[] = [];
+  for (const best of sortedBests) {
+    const divRanking = divisionRankings.get(best.division)!;
+    result.push(...divRanking);
+  }
+
+  return result;
+}
+
 // Calculate playoff seedings for a conference
 export function calculatePlayoffSeedings(
   conference: Conference,
@@ -521,24 +693,24 @@ export function calculatePlayoffSeedings(
     }
   }
 
-  // Sort division winners by record
-  const sortedDivisionWinners = [...divisionWinners].sort((a, b) => {
-    const aRec = allRecords.get(a.id)!;
-    const bRec = allRecords.get(b.id)!;
-    return winPct(bRec.wins, bRec.losses, bRec.ties) -
-           winPct(aRec.wins, aRec.losses, aRec.ties);
-  });
+  // Sort division winners by record, applying tiebreakers for teams with same record
+  // Division winners are from different divisions, so use wild card tiebreaker rules (isDivisionTie: false)
+  const sortedDivisionWinners = sortTeamsWithTiebreakers(
+    divisionWinners,
+    allRecords,
+    games,
+    selections,
+    false // Division winners use wild card tiebreaker rules for seeding
+  );
 
-  // Handle ties among division winners
-  // ... (simplified for now)
-
-  // Sort wild card teams
-  const sortedWildCard = [...wildCardTeams].sort((a, b) => {
-    const aRec = allRecords.get(a.id)!;
-    const bRec = allRecords.get(b.id)!;
-    return winPct(bRec.wins, bRec.losses, bRec.ties) -
-           winPct(aRec.wins, aRec.losses, aRec.ties);
-  });
+  // Sort wild card teams by record, applying tiebreakers for teams with same record
+  const sortedWildCard = sortTeamsWithTiebreakers(
+    wildCardTeams,
+    allRecords,
+    games,
+    selections,
+    false // Wild card teams use wild card tiebreaker rules
+  );
 
   // Take top 3 wild cards
   const playoffWildCards = sortedWildCard.slice(0, 3);

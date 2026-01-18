@@ -275,8 +275,8 @@ export function useEspnApi(pollInterval = 45000): UseEspnApiReturn {
     setError(null);
 
     try {
-      // First, get current week
-      const currentWeekUrl = `${ESPN_BASE_URL}/scoreboard?seasontype=${REGULAR_SEASON_TYPE}`;
+      // First, get current week for the specified season
+      const currentWeekUrl = `${ESPN_BASE_URL}/scoreboard?seasontype=${REGULAR_SEASON_TYPE}&dates=${CURRENT_SEASON}`;
       const currentWeekData = await fetchWithRetry<EspnScoreboardResponse>(currentWeekUrl);
       // Cap at week 18 for regular season (if past regular season, show week 18)
       const week = Math.min(currentWeekData.week?.number || 18, 18);

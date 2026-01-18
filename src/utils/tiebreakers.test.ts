@@ -481,6 +481,458 @@ describe('Win Percentage Calculation', () => {
   });
 });
 
+describe('Division Record Tracking - Extended', () => {
+  it('should correctly track division losses', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East'); // Same division
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 17, 24), // team1 loses division game
+      createGame('g2', team2, team1, 24, 17), // team1 loses again
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.divisionWins).toBe(0);
+    expect(team1Record?.divisionLosses).toBe(2);
+    expect(team1Record?.losses).toBe(2);
+  });
+
+  it('should correctly track division ties', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East'); // Same division
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 20, 20), // tie
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.divisionWins).toBe(0);
+    expect(team1Record?.divisionLosses).toBe(0);
+    expect(team1Record?.divisionTies).toBe(1);
+    expect(team1Record?.ties).toBe(1);
+  });
+
+  it('should track division record when playing same opponent twice', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 24, 17, 'final', 1), // team1 wins at home
+      createGame('g2', team2, team1, 21, 28, 'final', 12), // team1 wins on road
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.divisionWins).toBe(2);
+    expect(team1Record?.divisionLosses).toBe(0);
+
+    const team2Record = recordsMap.get('2');
+    expect(team2Record?.divisionWins).toBe(0);
+    expect(team2Record?.divisionLosses).toBe(2);
+  });
+
+  it('should not count non-division games in division record', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC North'); // Different division
+    const team3 = createTeam('3', 'Team3', 'NFC', 'NFC East'); // Different conference
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 24, 17), // Non-division AFC game
+      createGame('g2', team1, team3, 24, 17), // Non-conference game
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2, team3], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.wins).toBe(2);
+    expect(team1Record?.divisionWins).toBe(0);
+    expect(team1Record?.divisionLosses).toBe(0);
+  });
+
+  it('should track all 6 division games correctly', () => {
+    // Create all 4 AFC East teams
+    const bills = createTeam('buf', 'Bills', 'AFC', 'AFC East');
+    const dolphins = createTeam('mia', 'Dolphins', 'AFC', 'AFC East');
+    const patriots = createTeam('ne', 'Patriots', 'AFC', 'AFC East');
+    const jets = createTeam('nyj', 'Jets', 'AFC', 'AFC East');
+
+    // Bills play each rival twice (6 games total)
+    const games: Game[] = [
+      // vs Dolphins (split)
+      createGame('g1', bills, dolphins, 24, 17),
+      createGame('g2', dolphins, bills, 21, 17),
+      // vs Patriots (sweep)
+      createGame('g3', bills, patriots, 31, 10),
+      createGame('g4', patriots, bills, 14, 28),
+      // vs Jets (split)
+      createGame('g5', bills, jets, 20, 17),
+      createGame('g6', jets, bills, 24, 21),
+    ];
+
+    const recordsMap = calculateTeamRecords([bills, dolphins, patriots, jets], games, {});
+
+    const billsRecord = recordsMap.get('buf');
+    expect(billsRecord?.divisionWins).toBe(4);
+    expect(billsRecord?.divisionLosses).toBe(2);
+    expect(billsRecord?.wins).toBe(4);
+    expect(billsRecord?.losses).toBe(2);
+  });
+});
+
+describe('Conference Record Tracking - Extended', () => {
+  it('should correctly track conference losses', () => {
+    const afcTeam1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const afcTeam2 = createTeam('2', 'Team2', 'AFC', 'AFC North');
+
+    const games: Game[] = [
+      createGame('g1', afcTeam1, afcTeam2, 17, 24), // team1 loses conference game
+    ];
+
+    const recordsMap = calculateTeamRecords([afcTeam1, afcTeam2], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.conferenceWins).toBe(0);
+    expect(team1Record?.conferenceLosses).toBe(1);
+  });
+
+  it('should correctly track conference ties', () => {
+    const afcTeam1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const afcTeam2 = createTeam('2', 'Team2', 'AFC', 'AFC North');
+
+    const games: Game[] = [
+      createGame('g1', afcTeam1, afcTeam2, 20, 20), // tie
+    ];
+
+    const recordsMap = calculateTeamRecords([afcTeam1, afcTeam2], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.conferenceWins).toBe(0);
+    expect(team1Record?.conferenceLosses).toBe(0);
+    expect(team1Record?.conferenceTies).toBe(1);
+  });
+
+  it('should not count non-conference games in conference record', () => {
+    const afcTeam = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const nfcTeam = createTeam('2', 'Team2', 'NFC', 'NFC East');
+
+    const games: Game[] = [
+      createGame('g1', afcTeam, nfcTeam, 24, 17), // Non-conference game
+    ];
+
+    const recordsMap = calculateTeamRecords([afcTeam, nfcTeam], games, {});
+
+    const afcRecord = recordsMap.get('1');
+    expect(afcRecord?.wins).toBe(1);
+    expect(afcRecord?.conferenceWins).toBe(0);
+    expect(afcRecord?.conferenceLosses).toBe(0);
+  });
+
+  it('should count division games in conference record', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East'); // Same division
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 24, 17), // Division game is also conference game
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.divisionWins).toBe(1);
+    expect(team1Record?.conferenceWins).toBe(1); // Division games count toward conference
+  });
+});
+
+describe('Points For/Against - Extended', () => {
+  it('should calculate point differential correctly', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 35, 14), // +21
+      createGame('g2', team2, team1, 20, 17), // -3
+      createGame('g3', team1, team2, 28, 28), // 0 (tie)
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.pointsFor).toBe(80); // 35 + 17 + 28
+    expect(team1Record?.pointsAgainst).toBe(62); // 14 + 20 + 28
+    // Point differential = 80 - 62 = +18
+    expect(team1Record!.pointsFor - team1Record!.pointsAgainst).toBe(18);
+  });
+
+  it('should use estimated scores for home win selection (24-17)', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, null, null, 'scheduled'),
+    ];
+
+    const selections: Record<string, GameSelection> = {
+      'g1': 'home', // home team wins
+    };
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, selections);
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.pointsFor).toBe(24);
+    expect(team1Record?.pointsAgainst).toBe(17);
+
+    const team2Record = recordsMap.get('2');
+    expect(team2Record?.pointsFor).toBe(17);
+    expect(team2Record?.pointsAgainst).toBe(24);
+  });
+
+  it('should use estimated scores for away win selection (17-24)', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, null, null, 'scheduled'),
+    ];
+
+    const selections: Record<string, GameSelection> = {
+      'g1': 'away', // away team wins
+    };
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, selections);
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.pointsFor).toBe(17);
+    expect(team1Record?.pointsAgainst).toBe(24);
+
+    const team2Record = recordsMap.get('2');
+    expect(team2Record?.pointsFor).toBe(24);
+    expect(team2Record?.pointsAgainst).toBe(17);
+  });
+
+  it('should use estimated scores for tie selection (20-20)', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, null, null, 'scheduled'),
+    ];
+
+    const selections: Record<string, GameSelection> = {
+      'g1': 'tie',
+    };
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, selections);
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.pointsFor).toBe(20);
+    expect(team1Record?.pointsAgainst).toBe(20);
+
+    const team2Record = recordsMap.get('2');
+    expect(team2Record?.pointsFor).toBe(20);
+    expect(team2Record?.pointsAgainst).toBe(20);
+  });
+
+  it('should not count points from games without selection', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 24, 17), // Final game - counts
+      createGame('g2', team1, team2, null, null, 'scheduled'), // No selection - doesn't count
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.pointsFor).toBe(24); // Only from g1
+    expect(team1Record?.pointsAgainst).toBe(17);
+  });
+
+  it('should handle 0-0 final score', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 0, 0), // Rare but valid 0-0 tie
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.pointsFor).toBe(0);
+    expect(team1Record?.pointsAgainst).toBe(0);
+    expect(team1Record?.ties).toBe(1);
+  });
+
+  it('should accumulate points across multiple games', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+    const team3 = createTeam('3', 'Team3', 'AFC', 'AFC North');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 31, 24),
+      createGame('g2', team1, team3, 17, 14),
+      createGame('g3', team3, team1, 28, 35),
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2, team3], games, {});
+
+    const team1Record = recordsMap.get('1');
+    expect(team1Record?.pointsFor).toBe(83); // 31 + 17 + 35
+    expect(team1Record?.pointsAgainst).toBe(66); // 24 + 14 + 28
+  });
+});
+
+describe('Selection Updates and Changes', () => {
+  it('should update records when selection is made for scheduled game', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, null, null, 'scheduled'),
+    ];
+
+    // First calculation with no selection
+    const noSelectionRecords = calculateTeamRecords([team1, team2], games, {});
+    expect(noSelectionRecords.get('1')?.wins).toBe(0);
+
+    // Second calculation with selection
+    const withSelectionRecords = calculateTeamRecords([team1, team2], games, { 'g1': 'home' });
+    expect(withSelectionRecords.get('1')?.wins).toBe(1);
+  });
+
+  it('should handle changing selection from one team to another', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, null, null, 'scheduled'),
+    ];
+
+    // Selection: home wins
+    const homeWinsRecords = calculateTeamRecords([team1, team2], games, { 'g1': 'home' });
+    expect(homeWinsRecords.get('1')?.wins).toBe(1);
+    expect(homeWinsRecords.get('2')?.wins).toBe(0);
+
+    // Selection changed: away wins
+    const awayWinsRecords = calculateTeamRecords([team1, team2], games, { 'g1': 'away' });
+    expect(awayWinsRecords.get('1')?.wins).toBe(0);
+    expect(awayWinsRecords.get('2')?.wins).toBe(1);
+  });
+
+  it('should handle selection for in_progress game', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 14, 10, 'in_progress'), // Current score doesn't matter
+    ];
+
+    // With selection, in-progress game counts
+    const withSelection = calculateTeamRecords([team1, team2], games, { 'g1': 'home' });
+    expect(withSelection.get('1')?.wins).toBe(1);
+  });
+
+  it('should use final result even if selection exists', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 24, 17, 'final'), // Final: home wins
+    ];
+
+    // Selection says away wins, but game is final so home win should be used
+    const records = calculateTeamRecords([team1, team2], games, { 'g1': 'away' });
+    expect(records.get('1')?.wins).toBe(1); // Home team actually won
+    expect(records.get('2')?.wins).toBe(0);
+  });
+});
+
+describe('Win Percentage Edge Cases', () => {
+  it('should calculate win percentage correctly with all wins', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [];
+    for (let i = 0; i < 17; i++) {
+      games.push(createGame(`g${i}`, team1, team2, 24, 17));
+    }
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+    const record = recordsMap.get('1');
+
+    expect(record?.wins).toBe(17);
+    expect(record?.losses).toBe(0);
+    const winPct = record!.wins / (record!.wins + record!.losses + record!.ties);
+    expect(winPct).toBe(1.0);
+  });
+
+  it('should calculate win percentage correctly with all losses', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [];
+    for (let i = 0; i < 17; i++) {
+      games.push(createGame(`g${i}`, team1, team2, 17, 24));
+    }
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+    const record = recordsMap.get('1');
+
+    expect(record?.wins).toBe(0);
+    expect(record?.losses).toBe(17);
+    const winPct = record!.wins / (record!.wins + record!.losses + record!.ties);
+    expect(winPct).toBe(0.0);
+  });
+
+  it('should calculate win percentage with only ties', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [
+      createGame('g1', team1, team2, 20, 20),
+      createGame('g2', team2, team1, 17, 17),
+    ];
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+    const record = recordsMap.get('1');
+
+    expect(record?.wins).toBe(0);
+    expect(record?.losses).toBe(0);
+    expect(record?.ties).toBe(2);
+    // Win pct with only ties = (0 + 0.5*2) / 2 = 0.5
+    const winPct = (record!.wins + 0.5 * record!.ties) / (record!.wins + record!.losses + record!.ties);
+    expect(winPct).toBe(0.5);
+  });
+
+  it('should handle .500 record', () => {
+    const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');
+    const team2 = createTeam('2', 'Team2', 'AFC', 'AFC East');
+
+    const games: Game[] = [];
+    // 8 wins, 8 losses
+    for (let i = 0; i < 8; i++) {
+      games.push(createGame(`w${i}`, team1, team2, 24, 17));
+    }
+    for (let i = 0; i < 8; i++) {
+      games.push(createGame(`l${i}`, team1, team2, 17, 24));
+    }
+
+    const recordsMap = calculateTeamRecords([team1, team2], games, {});
+    const record = recordsMap.get('1');
+
+    expect(record?.wins).toBe(8);
+    expect(record?.losses).toBe(8);
+    const winPct = record!.wins / (record!.wins + record!.losses + record!.ties);
+    expect(winPct).toBe(0.5);
+  });
+});
+
 describe('Edge Cases', () => {
   it('should handle multiple games between same teams', () => {
     const team1 = createTeam('1', 'Team1', 'AFC', 'AFC East');

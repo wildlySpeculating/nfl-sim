@@ -247,6 +247,9 @@ function getLosersFromPicks(
       }
     }
   } else if (round === 'divisional') {
+    // Get divisional winners from picks
+    const divisionalWinners = playoffPicks[conference].divisional.filter(id => id !== null);
+
     for (let i = 0; i < (playoffPicks[conference].divisional.length); i++) {
       const winnerId = playoffPicks[conference].divisional[i];
       if (!winnerId) continue;
@@ -264,6 +267,32 @@ function getLosersFromPicks(
         }
       }
     }
+
+    // If no games defined but we have picks, determine losers from participants
+    // Divisional participants are: #1 seed + 3 wild card winners
+    if (roundGames.length === 0 && divisionalWinners.length > 0) {
+      // Get #1 seed
+      const confStandings = conference === 'afc'
+        ? allStandings.filter(s => s.team.conference === 'AFC')
+        : allStandings.filter(s => s.team.conference === 'NFC');
+      const seed1 = confStandings.find(s => s.seed === 1);
+
+      // Get wild card winners
+      const wcWinners = playoffPicks[conference].wildCard.filter(id => id !== null);
+
+      // Divisional participants = seed 1 + wild card winners
+      const participants = seed1 ? [seed1.team.id, ...wcWinners] : wcWinners;
+
+      // Losers are participants that aren't divisional winners
+      for (const participantId of participants) {
+        if (!divisionalWinners.includes(participantId)) {
+          const loserStanding = allStandings.find(s => s.team.id === participantId);
+          if (loserStanding && !losers.some(l => l.team.id === loserStanding.team.id)) {
+            losers.push(loserStanding);
+          }
+        }
+      }
+    }
   } else if (round === 'championship') {
     const winnerId = playoffPicks[conference].championship;
     if (!winnerId) return losers;
@@ -278,6 +307,18 @@ function getLosersFromPicks(
       const loserStanding = allStandings.find(s => s.team.id === loserId);
       if (loserStanding) {
         losers.push(loserStanding);
+      }
+    } else {
+      // No game defined, but we have a pick - determine loser from divisional winners
+      // The championship loser is the divisional winner that isn't the championship winner
+      const divisionalWinners = playoffPicks[conference].divisional.filter(id => id !== null);
+      for (const divWinnerId of divisionalWinners) {
+        if (divWinnerId !== winnerId) {
+          const loserStanding = allStandings.find(s => s.team.id === divWinnerId);
+          if (loserStanding) {
+            losers.push(loserStanding);
+          }
+        }
       }
     }
   }

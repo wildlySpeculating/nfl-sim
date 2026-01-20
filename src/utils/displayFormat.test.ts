@@ -309,7 +309,7 @@ describe('Phase 13: Display and Formatting Tests', () => {
 
   describe('Draft Order Display - Reason Formatting', () => {
     const reasons = [
-      'Did not make playoffs',
+      'Missed playoffs',
       'Lost in Wild Card',
       'Lost in Divisional',
       'Lost in Conference Championship',
@@ -333,7 +333,7 @@ describe('Phase 13: Display and Formatting Tests', () => {
     describe('Reason color coding logic', () => {
       const getReasonColor = (reason: string) => {
         switch (reason) {
-          case 'Did not make playoffs':
+          case 'Missed playoffs':
             return 'text-gray-500 dark:text-gray-400';
           case 'Lost in Wild Card':
             return 'text-blue-600 dark:text-blue-400';
@@ -351,7 +351,7 @@ describe('Phase 13: Display and Formatting Tests', () => {
       };
 
       it('should return gray color for non-playoff teams', () => {
-        expect(getReasonColor('Did not make playoffs')).toContain('gray');
+        expect(getReasonColor('Missed playoffs')).toContain('gray');
       });
 
       it('should return blue color for Wild Card losers', () => {

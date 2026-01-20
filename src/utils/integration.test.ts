@@ -380,7 +380,7 @@ describe('Phase 12: Integration Tests', () => {
 
       // Should only have non-playoff teams (picks 1-18)
       expect(draftOrder.length).toBe(18);
-      expect(draftOrder.every(p => p.reason === 'Did not make playoffs')).toBe(true);
+      expect(draftOrder.every(p => p.reason === 'Missed playoffs')).toBe(true);
       expect(draftOrder[0].pick).toBe(1);
       expect(draftOrder[17].pick).toBe(18);
     });
@@ -669,7 +669,7 @@ describe('Phase 12: Integration Tests', () => {
 
       // Only non-playoff teams should be available
       expect(draftOrder.length).toBe(18);
-      expect(draftOrder.every(p => p.reason === 'Did not make playoffs')).toBe(true);
+      expect(draftOrder.every(p => p.reason === 'Missed playoffs')).toBe(true);
     });
 
     it('should progressively unlock picks as rounds complete', () => {

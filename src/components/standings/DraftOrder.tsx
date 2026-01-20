@@ -161,7 +161,7 @@ function DraftPickRow({ pick }: DraftPickRowProps) {
   // Color code by reason
   const getReasonColor = () => {
     switch (pick.reason) {
-      case 'Did not make playoffs':
+      case 'Missed playoffs':
         return 'text-gray-500 dark:text-gray-400';
       case 'Lost in Wild Card':
         return 'text-blue-600 dark:text-blue-400';

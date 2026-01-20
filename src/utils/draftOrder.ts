@@ -393,7 +393,7 @@ export function calculateDraftOrder(
       pick: pickNumber++,
       team: standing.team,
       record: formatRecord(standing),
-      reason: 'Did not make playoffs',
+      reason: 'Missed playoffs',
     });
   }
 

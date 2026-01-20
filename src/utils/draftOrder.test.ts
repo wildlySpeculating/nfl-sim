@@ -118,8 +118,8 @@ describe('Draft Order Calculation', () => {
       // Non-playoff teams should be first
       expect(result[0].team.id).toBe('1'); // 4-13
       expect(result[1].team.id).toBe('3'); // 5-12
-      expect(result[0].reason).toBe('Did not make playoffs');
-      expect(result[1].reason).toBe('Did not make playoffs');
+      expect(result[0].reason).toBe('Missed playoffs');
+      expect(result[1].reason).toBe('Missed playoffs');
     });
 
     it('should order non-playoff teams by worst record first', () => {
@@ -411,7 +411,7 @@ describe('Draft Order Calculation', () => {
       // Pick 18 should go to team with best record among non-playoff
       expect(result.length).toBe(18);
       expect(result[17].pick).toBe(18);
-      expect(result[17].reason).toBe('Did not make playoffs');
+      expect(result[17].reason).toBe('Missed playoffs');
 
       // The last pick should have the best record (highest wins)
       const pick18Wins = parseInt(result[17].record.split('-')[0]);
@@ -1735,7 +1735,7 @@ describe('Draft Order Calculation', () => {
       }
 
       // Verify categories
-      const nonPlayoff = result.filter(p => p.reason === 'Did not make playoffs');
+      const nonPlayoff = result.filter(p => p.reason === 'Missed playoffs');
       const wcLosers = result.filter(p => p.reason === 'Lost in Wild Card');
       const divLosers = result.filter(p => p.reason === 'Lost in Divisional');
       const confLosers = result.filter(p => p.reason === 'Lost in Conference Championship');
@@ -1786,7 +1786,7 @@ describe('Phase 11: Draft Order Edge Cases', () => {
     );
 
     // Both 4-13 teams should get picks 1-2 (order may vary but both should be included)
-    const nonPlayoffPicks = result.filter(p => p.reason === 'Did not make playoffs');
+    const nonPlayoffPicks = result.filter(p => p.reason === 'Missed playoffs');
     expect(nonPlayoffPicks.length).toBe(2);
     expect(nonPlayoffPicks[0].pick).toBe(1);
     expect(nonPlayoffPicks[1].pick).toBe(2);
@@ -1822,7 +1822,7 @@ describe('Phase 11: Draft Order Edge Cases', () => {
     );
 
     // Non-playoff team with 9-8 record should pick first among non-playoff teams
-    const nonPlayoffPicks = result.filter(p => p.reason === 'Did not make playoffs');
+    const nonPlayoffPicks = result.filter(p => p.reason === 'Missed playoffs');
     expect(nonPlayoffPicks.length).toBe(1);
     expect(nonPlayoffPicks[0].team.id).toBe('a1');
     expect(nonPlayoffPicks[0].record).toBe('9-8');
@@ -1876,7 +1876,7 @@ describe('Phase 11: Draft Order Edge Cases', () => {
     // - 18 non-playoff picks (1-18)
     // - 6 Wild Card loser picks (19-24)
     // - No divisional/championship/super bowl picks yet
-    const nonPlayoff = result.filter(p => p.reason === 'Did not make playoffs');
+    const nonPlayoff = result.filter(p => p.reason === 'Missed playoffs');
     const wcLosers = result.filter(p => p.reason === 'Lost in Wild Card');
 
     expect(nonPlayoff.length).toBe(18);
@@ -1977,7 +1977,7 @@ describe('Phase 11: Draft Order Edge Cases', () => {
       []
     );
 
-    const nonPlayoff = result.filter(p => p.reason === 'Did not make playoffs');
+    const nonPlayoff = result.filter(p => p.reason === 'Missed playoffs');
     expect(nonPlayoff.length).toBe(3);
 
     // Teams ordered by record: worst (3-14) to best (5-12)
@@ -2057,7 +2057,7 @@ describe('Phase 11: Draft Order Edge Cases', () => {
     expect(result.length).toBe(18);
 
     // Check non-playoff teams
-    const nonPlayoff = result.filter(p => p.reason === 'Did not make playoffs');
+    const nonPlayoff = result.filter(p => p.reason === 'Missed playoffs');
     expect(nonPlayoff.length).toBe(4);
 
     // Check Wild Card losers - should be seeds 5, 6, 7 from each conference

@@ -51,6 +51,7 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<unknown>>();
+const pendingRequests = new Map<string, Promise<unknown>>();
 const CACHE_TTL = 60 * 1000; // 1 minute
 const STALE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -62,31 +63,51 @@ async function fetchWithRetry<T>(
   const cacheKey = url;
   const cached = cache.get(cacheKey) as CacheEntry<T> | undefined;
 
+  // Return fresh cached data immediately
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
   }
 
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json() as T;
-      cache.set(cacheKey, { data, timestamp: Date.now() });
-      return data;
-    } catch (error) {
-      if (attempt === retries - 1) {
-        // On final retry, return cached data if available (even if stale)
-        if (cached) {
-          return cached.data;
-        }
-        throw error;
-      }
-      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
-    }
+  // If there's already a pending request for this URL, return it (deduplication)
+  const pending = pendingRequests.get(cacheKey);
+  if (pending) {
+    return pending as Promise<T>;
   }
-  throw new Error('Failed to fetch after retries');
+
+  // Create the fetch promise and track it
+  const fetchPromise = (async (): Promise<T> => {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json() as T;
+        cache.set(cacheKey, { data, timestamp: Date.now() });
+        return data;
+      } catch (error) {
+        if (attempt === retries - 1) {
+          // On final retry, return cached data if available (even if stale)
+          if (cached) {
+            return cached.data;
+          }
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
+      }
+    }
+    throw new Error('Failed to fetch after retries');
+  })();
+
+  // Track the pending request
+  pendingRequests.set(cacheKey, fetchPromise);
+
+  // Clean up pending request when done (success or failure)
+  fetchPromise.finally(() => {
+    pendingRequests.delete(cacheKey);
+  });
+
+  return fetchPromise;
 }
 
 function parseEspnGame(event: EspnEvent): Game | null {

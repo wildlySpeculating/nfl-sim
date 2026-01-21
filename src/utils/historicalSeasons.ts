@@ -133,7 +133,7 @@ export function fixtureToGames(
   }>
 ): Game[] {
   return fixtures
-    .map(f => {
+    .map((f): Game | null => {
       const homeTeam = getTeamByAbbreviation(f.home);
       const awayTeam = getTeamByAbbreviation(f.away);
 
@@ -145,7 +145,7 @@ export function fixtureToGames(
         homeTeam,
         awayTeam,
         kickoffTime: new Date(),
-        status: 'final' as const,
+        status: 'final',
         homeScore: f.homeScore,
         awayScore: f.awayScore,
       };

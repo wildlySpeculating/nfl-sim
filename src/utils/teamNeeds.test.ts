@@ -753,23 +753,6 @@ describe('Phase 1: Core Magic Number Tests', () => {
  * and that each path type accurately represents how the team would clinch.
  */
 
-// Path interface for testing
-interface TeamPath {
-  type: 'bye' | 'division' | 'wildcard';
-  description: string;
-  requirements: PathRequirement[];
-  guaranteed: boolean;  // true if following this path GUARANTEES the goal
-}
-
-interface PathRequirement {
-  gameId: string;
-  week: number;
-  requirementType: 'team_wins' | 'team_loses' | 'opponent_wins' | 'opponent_loses';
-  team: string;      // team that must win/lose
-  opponent: string;  // their opponent in this game
-  description: string;
-}
-
 describe('Phase 2: Basic Path Tests', () => {
   describe('3.1 Playoff Path Types', () => {
 
@@ -1851,15 +1834,6 @@ describe('Phase 3: Scenario Simulation Tests', () => {
  * that would get them into the playoffs.
  */
 
-// Elimination result interface
-interface EliminationResult {
-  isEliminated: boolean;
-  eliminatedFrom: ('playoff' | 'division' | 'bye')[];
-  reason?: string;
-  bestPossibleSeed?: number | null;  // null if eliminated
-  worstPossibleSeed?: number | null; // null if eliminated
-}
-
 describe('Phase 4: Elimination Detection Tests', () => {
   describe('4.1 True Elimination', () => {
 
@@ -2410,23 +2384,6 @@ describe('Phase 4: Elimination Detection Tests', () => {
  * These tests verify accurate clinch detection. A team has "clinched" when
  * their status is guaranteed regardless of all remaining game outcomes.
  */
-
-// Clinch result interface
-interface ClinchResult {
-  hasClinched: boolean;
-  clinchType: 'playoff' | 'division' | 'bye' | null;
-  clinchScenario?: string;  // Description of what clinched
-  guaranteedSeed?: number;  // Minimum seed guaranteed
-}
-
-// Clinch condition interface
-interface ClinchCondition {
-  type: 'win' | 'opponent_loses' | 'win_or_opponent_loses' | 'win_and_opponent_loses';
-  teamGame?: string;       // Game ID for team's game
-  opponentGame?: string;   // Game ID for opponent's game
-  opponent?: string;       // Opponent team ID
-  description: string;
-}
 
 describe('Phase 5: Clinching Scenario Tests', () => {
   describe('5.1 Clinch Types', () => {

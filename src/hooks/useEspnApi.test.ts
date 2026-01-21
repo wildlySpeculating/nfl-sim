@@ -270,7 +270,7 @@ describe('ESPN API Response Handling', () => {
       const awayScore = 7;
       const homeTeamId = 'home-team';
       const awayTeamId = 'away-team';
-      const status = 'in_progress';
+      const status = 'in_progress' as 'final' | 'in_progress' | 'scheduled';
 
       let winnerId: string | null = null;
       if (status === 'final' && homeScore !== null && awayScore !== null) {

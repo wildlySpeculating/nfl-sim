@@ -46,7 +46,7 @@ import {
  */
 function fixtureToGames(fixtures: CompactGame[]): Game[] {
   return fixtures
-    .map(f => {
+    .map((f): Game | null => {
       const homeTeam = getTeamByAbbreviation(f.home);
       const awayTeam = getTeamByAbbreviation(f.away);
 
@@ -61,7 +61,7 @@ function fixtureToGames(fixtures: CompactGame[]): Game[] {
         homeTeam,
         awayTeam,
         kickoffTime: new Date(),
-        status: 'final' as const,
+        status: 'final',
         homeScore: f.homeScore,
         awayScore: f.awayScore,
       };

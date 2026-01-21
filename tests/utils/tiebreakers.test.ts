@@ -2249,7 +2249,7 @@ describe('Basic Division Winner', () => {
     for (const id of nonWinnerIds) {
       const standing = standings.find(s => s.team.id === id);
       // With only 8 teams, top 7 make playoffs
-      expect(standing?.seed === null || standing?.seed! >= 5).toBe(true);
+      expect(standing?.seed === null || (standing?.seed !== undefined && standing.seed >= 5)).toBe(true);
     }
   });
 });
@@ -3191,7 +3191,7 @@ describe('Wild Card Edge Cases', () => {
 
     // Some non-playoff team might have better record
     const missedPlayoffs = standings.filter(s => s.seed === null);
-    const betterRecordMissed = missedPlayoffs.some(s => s.wins > w1Wins);
+    const _betterRecordMissed = missedPlayoffs.some(s => s.wins > w1Wins);
     // This might or might not be true depending on exact records
     // The key is w1 makes it as division winner regardless of record
   });
@@ -3426,7 +3426,8 @@ describe('7-Team Playoff Structure', () => {
 
   it('should give seed 1 to best division winner (first-round bye)', () => {
     const afcTeams = createFullConference('AFC');
-    let { games, nextId } = createDivisionGames(afcTeams, 1);
+    const { games, nextId: _nextId } = createDivisionGames(afcTeams, 1);
+    let nextId = _nextId;
 
     // Give e1 extra wins to make them clearly seed 1
     const e1 = afcTeams.find(t => t.id === 'e1')!;
@@ -3641,7 +3642,8 @@ describe('Non-Playoff Teams', () => {
 
   it('should include 4 teams with worst division standing as non-playoff', () => {
     const afcTeams = createFullConference('AFC');
-    let { games, nextId } = createDivisionGames(afcTeams, 1);
+    const { games, nextId: _nextId } = createDivisionGames(afcTeams, 1);
+    let nextId = _nextId;
 
     // Add games to differentiate 2nd, 3rd, 4th place within each division
     // In each division: 1st already sweeps, make 2nd > 3rd > 4th
@@ -4228,7 +4230,7 @@ describe('Non-Playoff Teams - Extended', () => {
     const e2 = afcTeams.find(t => t.id === 'e2')!;
     const n2 = afcTeams.find(t => t.id === 'n2')!;
     const s2 = afcTeams.find(t => t.id === 's2')!;
-    const w2 = afcTeams.find(t => t.id === 'w2')!;
+    const _w2 = afcTeams.find(t => t.id === 'w2')!;
     const e3 = afcTeams.find(t => t.id === 'e3')!;
     const n3 = afcTeams.find(t => t.id === 'n3')!;
     const s3 = afcTeams.find(t => t.id === 's3')!;

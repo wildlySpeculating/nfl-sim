@@ -16,7 +16,7 @@ import { buildBracketFromGames, type TeamWithSeed, type PlayoffPicks } from '@/u
 import { calculateTeamRecords, calculatePlayoffSeedings, breakTie } from '@/utils/tiebreakers';
 import { calculateDraftOrder } from '@/utils/draftOrder';
 import { isTeamEliminated, calculateMagicNumber } from '@/utils/teamPaths';
-import type { Game, GameSelection, Team, TeamStanding } from '@/types';
+import type { Game, Team, TeamStanding } from '@/types';
 import type { PlayoffGame } from '@/hooks/useEspnApi';
 import { getTeamById } from '@/data/teams';
 
@@ -792,8 +792,6 @@ describe('Phase 15: Magic Number and Elimination Regression', () => {
       createGame('g5', dolphins, jets, 24, 17, 'final', 5), // Jets lose
     ];
 
-    const teams = [bills, dolphins, patriots, jets];
-
     // Jets at 1-4 should NOT be eliminated in week 5
     const eliminated = isTeamEliminated(jets.id, games, {});
     expect(eliminated).toBe(false);
@@ -827,7 +825,6 @@ describe('Phase 15: Test Data Requirements Validation', () => {
   const patriots = createTeam('3', 'Patriots', 'AFC', 'AFC East');
   const jets = createTeam('4', 'Jets', 'AFC', 'AFC East');
   const ravens = createTeam('5', 'Ravens', 'AFC', 'AFC North');
-  const bengals = createTeam('6', 'Bengals', 'AFC', 'AFC North');
   const texans = createTeam('9', 'Texans', 'AFC', 'AFC South');
 
   it('1. Simple 2-team division tie (H2H resolves)', () => {
@@ -1007,34 +1004,6 @@ describe('Phase 15: Test Data Requirements Validation', () => {
 // =============================================================================
 
 describe('Phase 15: Historical Season Regression Tests', () => {
-  // Helper to create a team with a specific record
-  function createSeasonTeam(
-    id: string,
-    wins: number,
-    losses: number,
-    ties: number = 0,
-    divWins: number = 0,
-    divLosses: number = 0,
-    confWins: number = 0,
-    confLosses: number = 0
-  ) {
-    const team = getTeamById(id)!;
-    return {
-      team,
-      wins,
-      losses,
-      ties,
-      divisionWins: divWins,
-      divisionLosses: divLosses,
-      divisionTies: 0,
-      conferenceWins: confWins,
-      conferenceLosses: confLosses,
-      conferenceTies: 0,
-      pointsFor: wins * 24,
-      pointsAgainst: losses * 17,
-    };
-  }
-
   // Helper to generate games from team records for seeding calculation
   function generateGamesFromRecords(
     teamRecords: Array<{ id: string; wins: number; losses: number; ties?: number;

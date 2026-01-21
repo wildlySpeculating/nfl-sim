@@ -336,7 +336,7 @@ export function useEspnApi(pollInterval = 45000): UseEspnApiReturn {
               allPlayoffGames.push(game);
             }
           }
-        } catch (e) {
+        } catch {
           // Playoff data may not be available yet
           console.log(`Playoff week ${playoffWeek} not available yet`);
         }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import type { Game, GameSelection, PlayoffPicks } from '@/types';
 
 interface ScenarioState {
@@ -55,7 +55,7 @@ export function useScenario(initialState?: Partial<ScenarioState>): UseScenarioR
   const setGameWinner = useCallback((gameId: string, selection: GameSelection) => {
     setSelections(prev => {
       if (selection === null) {
-        const { [gameId]: _, ...rest } = prev;
+        const { [gameId]: _removed, ...rest } = prev;
         return rest;
       }
       return { ...prev, [gameId]: selection };

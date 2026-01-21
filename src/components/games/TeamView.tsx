@@ -214,9 +214,6 @@ export function TeamView({
       {/* Games list */}
       <div className="space-y-2">
         {teamGames.map(game => {
-          const isHome = game.homeTeam.id === selectedTeamId;
-          const opponent = isHome ? game.awayTeam : game.homeTeam;
-
           return (
             <div key={game.id} className="relative">
               <div className="absolute left-0 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 w-8">

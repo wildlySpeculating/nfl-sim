@@ -441,7 +441,7 @@ describe('Elimination Detection', () => {
       // Other AFC teams have 10-6 records (very competitive conference)
       // Only 7 spots, and with many teams at 10-6 or 10-7, tiebreaker matters
       const otherAfcTeams = afcTeams.filter(t => t.id !== '1' && t.id !== '2' && t.id !== '3');
-      otherAfcTeams.slice(0, 5).forEach((t, idx) => {
+      otherAfcTeams.slice(0, 5).forEach((t) => {
         games.push(...createRecordGames(t, dolphins, 10, 6, 1, `${t.id}-`));
         games.push(...createRemainingGames(t, dolphins, 1, 17, `${t.id}-`));
       });
@@ -1374,7 +1374,6 @@ describe('Phase 8: Magic Number Calculation', () => {
     });
 
     it('should handle empty games array', () => {
-      const afcTeams = getTeamsByConference('AFC');
       const games: Game[] = [];
       const selections: Record<string, GameSelection> = {};
       const standings = getStandings('AFC', games, selections);

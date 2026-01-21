@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Constants that mirror useEspnApi.ts
 const ESPN_BASE_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';

@@ -1900,12 +1900,12 @@ describe('Phase 11: Draft Order Edge Cases', () => {
     }
 
     const afcStandings = [
-      ...afcTeams.map((t, i) => createStanding(t, 12 - i, 5 + i, i + 1, 0.5)),
-      ...afcNonPlayoff.map((t, i) => createStanding(t, 4, 13, null, 0.5)),
+      ...afcTeams.map((t, idx) => createStanding(t, 12 - idx, 5 + idx, idx + 1, 0.5)),
+      ...afcNonPlayoff.map(t => createStanding(t, 4, 13, null, 0.5)),
     ];
     const nfcStandings = [
-      ...nfcTeams.map((t, i) => createStanding(t, 12 - i, 5 + i, i + 1, 0.5)),
-      ...nfcNonPlayoff.map((t, i) => createStanding(t, 4, 13, null, 0.5)),
+      ...nfcTeams.map((t, idx) => createStanding(t, 12 - idx, 5 + idx, idx + 1, 0.5)),
+      ...nfcNonPlayoff.map(t => createStanding(t, 4, 13, null, 0.5)),
     ];
 
     // No games are final - all scheduled

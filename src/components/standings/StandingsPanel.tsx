@@ -124,7 +124,7 @@ interface TeamRowProps {
   showPlayoffLine?: boolean;
 }
 
-function TeamRow({ standing, rank, showPlayoffLine }: TeamRowProps) {
+function TeamRow({ standing, rank, showPlayoffLine: _showPlayoffLine }: TeamRowProps) {
   const { team, clinched, isEliminated, streak, lastFive, magicNumber } = standing;
 
   // Format magic number tooltip

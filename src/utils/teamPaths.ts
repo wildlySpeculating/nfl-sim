@@ -1,5 +1,5 @@
 import type { Team, Game, GameSelection, TeamStanding } from '@/types';
-import { teams, getTeamsByConference, getTeamsByDivision } from '@/data/teams';
+import { teams } from '@/data/teams';
 import { calculatePlayoffSeedings } from './tiebreakers';
 
 export interface TeamPath {
@@ -19,11 +19,6 @@ export interface PathRequirement {
   week: number;
 }
 
-interface ScenarioResult {
-  selections: Record<string, GameSelection>;
-  seed: number | null;
-  clinched: 'division' | 'playoff' | 'bye' | null;
-}
 
 // Get remaining games for a team
 function getRemainingGames(teamId: string, games: Game[]): Game[] {
@@ -32,15 +27,6 @@ function getRemainingGames(teamId: string, games: Game[]): Game[] {
   );
 }
 
-// Get all remaining games in the conference
-function getRemainingConferenceGames(conference: 'AFC' | 'NFC', games: Game[]): Game[] {
-  const conferenceTeams = getTeamsByConference(conference);
-  const teamIds = new Set(conferenceTeams.map(t => t.id));
-
-  return games.filter(
-    g => g.status !== 'final' && (teamIds.has(g.homeTeam.id) || teamIds.has(g.awayTeam.id))
-  );
-}
 
 // Check if team makes playoffs with given selections
 function checkPlayoffStatus(
@@ -90,10 +76,6 @@ export function calculateTeamPaths(
   }
 
   const remainingTeamGames = getRemainingGames(teamId, games);
-  const remainingConfGames = getRemainingConferenceGames(team.conference, games);
-
-  // Calculate current status
-  const currentStatus = checkPlayoffStatus(teamId, games, currentSelections, {});
 
   // Simple path: Team wins all remaining games
   if (remainingTeamGames.length > 0) {
@@ -283,7 +265,6 @@ export function calculateMagicNumber(
     return { number: null, scenarios: ['Eliminated'] };
   }
 
-  const remainingTeamGames = getRemainingGames(teamId, games);
   const paths = calculateTeamPaths(teamId, games, currentSelections, currentStandings);
 
   const relevantPaths = paths.filter(p => {

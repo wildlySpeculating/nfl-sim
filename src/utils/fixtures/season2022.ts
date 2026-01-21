@@ -15,6 +15,7 @@
  */
 
 import type { CompactGame } from './season2024';
+import { teams, espnAbbreviationToTeamId } from '@/data/teams';
 
 export const SEASON_2022_GAMES: CompactGame[] = [
   // Week 1
@@ -371,9 +372,6 @@ export const EXPECTED_2022_NFC_SEEDINGS = {
  * Helper to convert fixture data to Game objects for testing
  */
 export function fixture2022ToGames() {
-  const { teams } = require('@/data/teams');
-  const { espnAbbreviationToTeamId } = require('@/data/teams');
-
   return SEASON_2022_GAMES.map(g => {
     const homeTeamId = espnAbbreviationToTeamId[g.home];
     const awayTeamId = espnAbbreviationToTeamId[g.away];

@@ -220,7 +220,7 @@ interface TeamButtonProps extends TeamRowProps {
 
 function TeamButton({
   team,
-  record,
+  record: _record,
   isSelected,
   isWinner,
   isEliminated,

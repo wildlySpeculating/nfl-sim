@@ -5,7 +5,7 @@
  * for historical seasons to validate tiebreaker logic.
  */
 
-import type { Game, Team } from '@/types';
+import type { Game } from '@/types';
 import { getTeamByAbbreviation } from '@/data/teams';
 
 const ESPN_BASE_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';

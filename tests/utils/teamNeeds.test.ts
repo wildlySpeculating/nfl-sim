@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { teams, getTeamsByConference, getTeamsByDivision } from '@/data/teams';
-import type { Game, GameSelection, Team, TeamStanding } from '@/types';
+import { teams, getTeamsByConference } from '@/data/teams';
+import type { Game, GameSelection, Team } from '@/types';
 import {
   calculateMagicNumber,
   calculateTeamPaths,
@@ -17,17 +17,6 @@ import {
   checkEliminationAllGoals,
   checkClinch,
   getClinchConditions,
-  type MagicNumberResult,
-  type RelevantGame,
-  type ClinchScenario,
-  type ScenarioRequirement,
-  type GoalType,
-  type TeamPath,
-  type PathType,
-  type EliminationResult,
-  type AllGoalsEliminationResult,
-  type ClinchResult,
-  type ClinchCondition,
 } from '@/utils/teamNeeds';
 
 // Helper to create a mock game
@@ -199,7 +188,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
     it('should decrease magic number when team wins a game', () => {
       // Setup: Track magic number before and after a team win
       const teamA = getTeamById('1'); // Bills
-      const opponent = getTeamById('3'); // Patriots
+      const _opponent = getTeamById('3'); // Patriots
       const otherTeam = getTeamById('2'); // Dolphins
 
       // Scenario 1: Team A at 9-5 with 3 games remaining
@@ -361,7 +350,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
       games.push(...createRecordGames(otherTeam, teamA, 7, 7, 1, 'other-'));
       games.push(...createRemainingGames(otherTeam, teamA, 3, 15, 'other-'));
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber(teamA.id, games, selections, 'playoff');
@@ -405,7 +394,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
         }
       });
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber(teamA.id, games, selections, 'playoff');
@@ -448,7 +437,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
       games.push(...createRecordGames(otherTeam, teamA, 7, 8, 1, 'other-'));
       games.push(...createRemainingGames(otherTeam, teamA, 2, 16, 'other-'));
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber(teamA.id, games, selections, 'playoff');
@@ -489,7 +478,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
       games.push(...createRecordGames(otherTeam, teamA, 7, 8, 1, 'other-'));
       games.push(...createRemainingGames(otherTeam, teamA, 2, 16, 'other-'));
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber(teamA.id, games, selections, 'playoff');
@@ -535,7 +524,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
         }
       });
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const playoffMagic = calculateMagicNumber(teamA.id, games, selections, 'playoff');
@@ -574,7 +563,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
       games.push(...createRecordGames(otherTeam, teamA, 8, 6, 1, 'other-'));
       games.push(...createRemainingGames(otherTeam, teamA, 3, 15, 'other-'));
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber(teamA.id, games, selections, 'playoff');
@@ -610,7 +599,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
         }
       });
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber(teamA.id, games, selections, 'division');
@@ -645,7 +634,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
       games.push(...createRecordGames(otherTeam, teamA, 8, 6, 1, 'other-'));
       games.push(...createRemainingGames(otherTeam, teamA, 3, 15, 'other-'));
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber(teamA.id, games, selections, 'bye');
@@ -683,7 +672,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
       games.push(...createRecordGames(otherTeam, teamA, 9, 7, 1, 'other-'));
       games.push(...createRemainingGames(otherTeam, teamA, 1, 18, 'other-'));
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber(teamA.id, games, selections, 'playoff');
@@ -711,7 +700,7 @@ describe('Phase 1: Core Magic Number Tests', () => {
       });
       games.push(...createRecordGames(otherTeam, teamA, 9, 8, 1, 'other-'));
 
-      const selections: Record<string, GameSelection> = {};
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber(teamA.id, games, selections, 'playoff');
@@ -722,8 +711,8 @@ describe('Phase 1: Core Magic Number Tests', () => {
     });
 
     it('should return null for invalid team ID', () => {
-      const games: Game[] = [];
-      const selections: Record<string, GameSelection> = {};
+      const _games: Game[] = [];
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber('invalid-team-id', games, selections, 'playoff');
@@ -733,8 +722,8 @@ describe('Phase 1: Core Magic Number Tests', () => {
     });
 
     it('should handle empty games array', () => {
-      const games: Game[] = [];
-      const selections: Record<string, GameSelection> = {};
+      const _games: Game[] = [];
+      const _selections: Record<string, GameSelection> = {};
 
       // TODO: Replace with actual implementation
       // const result = calculateMagicNumber('1', games, selections, 'playoff');
@@ -1202,7 +1191,7 @@ describe('Phase 2: Basic Path Tests', () => {
 
       // Should have paths that include opponent losses
       // Look for any path that has requirements involving non-team games
-      const pathWithOpponentLoss = paths.find(p =>
+      const _pathWithOpponentLoss = paths.find(p =>
         p.requirements.some(r =>
           r.team1 !== teamA.id && r.team2 !== teamA.id
         )
@@ -3060,7 +3049,7 @@ describe('Phase 6: Tiebreaker-Aware Tests', () => {
 
       // Check if any path includes the H2H game as a requirement
       const allRequirements = paths.flatMap(p => p.requirements);
-      const h2hRequirement = allRequirements.find(r => r.gameId === h2hGame.id);
+      const _h2hRequirement = allRequirements.find(r => r.gameId === h2hGame.id);
 
       // The H2H game should appear in path requirements (winning it gives tiebreaker advantage)
       // Note: It may not always appear if there are simpler paths, but paths should exist
@@ -3180,7 +3169,7 @@ describe('Phase 6: Tiebreaker-Aware Tests', () => {
 
       // Check if the division game appears in any path requirements
       const allRequirements = divisionPaths.flatMap(p => p.requirements);
-      const divGameRequirement = allRequirements.find(r => r.gameId === divGame.id);
+      const _divGameRequirement = allRequirements.find(r => r.gameId === divGame.id);
 
       // The division game should matter for division title
       // Either it appears as a requirement, or paths exist for division title
@@ -3228,7 +3217,7 @@ describe('Phase 6: Tiebreaker-Aware Tests', () => {
 
       // Check if the division game appears in path requirements
       const allRequirements = paths.flatMap(p => p.requirements);
-      const divGameInPath = allRequirements.some(r => r.gameId === divGame.id);
+      const _divGameInPath = allRequirements.some(r => r.gameId === divGame.id);
 
       // Division game against division opponent should be important for division title
       // Either it appears in requirements OR paths exist showing division race is active
@@ -3647,7 +3636,7 @@ describe('Phase 6: Tiebreaker-Aware Tests', () => {
 
       // Check if the game against common opponent appears in requirements
       const allRequirements = paths.flatMap(p => p.requirements);
-      const commonOppRequirement = allRequirements.find(r => r.gameId === vsCommonOpp.id);
+      const _commonOppRequirement = allRequirements.find(r => r.gameId === vsCommonOpp.id);
 
       // The game against common opponent matters for tiebreaker with Team B
       // It may or may not appear explicitly depending on the scenario complexity
@@ -3815,7 +3804,7 @@ describe('Phase 7: Division Race Tests', () => {
 
       // Check if the division game appears in any path requirements
       const allRequirements = paths.flatMap(p => p.requirements);
-      const hasABGame = allRequirements.some(r => r.gameId === divGame.id);
+      const _hasABGame = allRequirements.some(r => r.gameId === divGame.id);
 
       // The division game between A and B is key for the division race
       // It should appear in path requirements or paths should exist for division
@@ -3910,7 +3899,7 @@ describe('Phase 7: Division Race Tests', () => {
 
       // Check if the division game appears in path requirements
       const allRequirements = paths.flatMap(p => p.requirements);
-      const divReq = allRequirements.find(r => r.gameId === divGame.id);
+      const _divReq = allRequirements.find(r => r.gameId === divGame.id);
 
       // Division game against Team B should be valuable for division title
       // Either it appears in requirements OR paths exist for division
@@ -4008,7 +3997,7 @@ describe('Phase 7: Division Race Tests', () => {
 
       // Check if the H2H game appears in path requirements
       const allRequirements = paths.flatMap(p => p.requirements);
-      const h2hReq = allRequirements.find(r => r.gameId === h2hGame.id);
+      const _h2hReq = allRequirements.find(r => r.gameId === h2hGame.id);
 
       // The H2H game should be important for the division race
       // Either it appears in requirements OR paths exist for division
@@ -4061,7 +4050,7 @@ describe('Phase 7: Division Race Tests', () => {
 
         // Check if the must-win game appears in path requirements
         const allRequirements = paths.flatMap(p => p.requirements);
-        const mustWinReq = allRequirements.find(r => r.gameId === mustWinGame.id);
+        const _mustWinReq = allRequirements.find(r => r.gameId === mustWinGame.id);
 
         // If paths exist, they should involve winning key games
         if (paths.some(p => p.type === 'division' || p.type === 'bye')) {

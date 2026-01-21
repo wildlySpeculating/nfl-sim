@@ -1,5 +1,5 @@
-import type { Team, Game, GameSelection, TeamStanding, Conference, Division, LastFiveGame } from '@/types';
-import { getTeamsByDivision, getTeamsByConference } from '@/data/teams';
+import type { Team, Game, GameSelection, TeamStanding, Conference, LastFiveGame } from '@/types';
+import { getTeamsByConference } from '@/data/teams';
 
 interface TeamRecord {
   team: Team;

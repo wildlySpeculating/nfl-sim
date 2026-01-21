@@ -318,8 +318,6 @@ function ConferenceBracket({
   onWinnerChange,
   reverse,
 }: ConferenceBracketProps) {
-  const allWildCardDecided = bracket.wildCardWinners.every(w => w !== null);
-  const allDivisionalDecided = bracket.divisionalWinners.every(w => w !== null);
   const logoUrl = `https://a.espncdn.com/i/teamlogos/nfl/500/${conference}.png`;
 
   const RoundHeader = ({ children }: { children: React.ReactNode }) => (

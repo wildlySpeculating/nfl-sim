@@ -23,7 +23,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { calculateTeamRecords, calculatePlayoffSeedings, breakTie } from '@/utils/tiebreakers';
-import type { Game, GameSelection, Team } from '@/types';
+import type { Game, Team } from '@/types';
 
 // Helper to create a mock team
 function createTeam(
@@ -94,8 +94,9 @@ const raiders = createTeam('16', 'Raiders', 'AFC', 'AFC West');
 // Create NFC East teams for cross-conference tests
 const cowboys = createTeam('17', 'Cowboys', 'NFC', 'NFC East');
 const eagles = createTeam('18', 'Eagles', 'NFC', 'NFC East');
-const giants = createTeam('19', 'Giants', 'NFC', 'NFC East');
-const commanders = createTeam('20', 'Commanders', 'NFC', 'NFC East');
+// Additional NFC East teams available if needed:
+// const giants = createTeam('19', 'Giants', 'NFC', 'NFC East');
+// const commanders = createTeam('20', 'Commanders', 'NFC', 'NFC East');
 
 const allAfcTeams = [
   bills, dolphins, patriots, jets,
@@ -1022,7 +1023,7 @@ describe('Phase 14: Playoff Seeding Integration', () => {
     const billsStanding = standings.find(s => s.team.id === bills.id);
     const ravensStanding = standings.find(s => s.team.id === ravens.id);
 
-    expect(billsStanding?.seed).toBeLessThan(ravensStanding?.seed!);
+    expect(billsStanding?.seed).toBeLessThan(ravensStanding!.seed!);
   });
 
   it('should mark non-playoff teams with seed: null', () => {

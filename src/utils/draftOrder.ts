@@ -167,9 +167,6 @@ function calculatePickRange(
   const unknownWorse = unknownPotential.filter(
     p => compareForDraftOrder(p, loser, sosMap) < 0
   ).length;
-  const unknownBetter = unknownPotential.filter(
-    p => compareForDraftOrder(p, loser, sosMap) > 0
-  ).length;
 
   // Best case: all unknowns with worse records lose, pushing this loser back
   // Worst case: all unknowns with better records lose, this loser picks earlier

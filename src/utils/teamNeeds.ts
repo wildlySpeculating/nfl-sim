@@ -10,7 +10,7 @@
  * - Multiple scenarios (different win/loss combinations)
  */
 
-import type { Team, Game, GameSelection, TeamStanding } from '@/types';
+import type { Team, Game, GameSelection } from '@/types';
 import { teams, getTeamsByConference, getTeamsByDivision } from '@/data/teams';
 import { calculatePlayoffSeedings } from './tiebreakers';
 
@@ -321,12 +321,9 @@ function findCompetitors(
         // Teams within striking distance
         const teamRecord = getTeamRecord(teamId, games, selections);
         const compRecord = getTeamRecord(s.team.id, games, selections);
-        const teamRemainingCount = getRemainingGames(teamId, games).length;
         const compRemainingCount = getRemainingGames(s.team.id, games).length;
 
         // Competitor could catch up or stay ahead
-        const teamBestWins = teamRecord.wins + teamRemainingCount;
-        const compWorstWins = compRecord.wins;
         const compBestWins = compRecord.wins + compRemainingCount;
         const teamWorstWins = teamRecord.wins;
 
@@ -336,7 +333,7 @@ function findCompetitors(
       }
       break;
 
-    case 'division':
+    case 'division': {
       // Competitors are teams in the same division
       const divisionTeams = getTeamsByDivision(team.division);
       for (const t of divisionTeams) {
@@ -345,6 +342,7 @@ function findCompetitors(
         }
       }
       break;
+    }
 
     case 'bye':
       // Competitors are all other conference teams that could get #1 seed
@@ -490,7 +488,6 @@ export function calculateMagicNumber(
 
   // Try combinations: 0 wins, 1 win, 2 wins, etc.
   // Combined with: 0 opponent losses, 1 opponent loss, etc.
-  outerLoop:
   for (let wins = 0; wins <= maxTeamWins; wins++) {
     // Early exit if we already found a solution with fewer wins
     if (wins >= minMagicNumber) break;

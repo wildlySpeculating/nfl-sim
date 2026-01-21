@@ -16,14 +16,12 @@ import {
   SEASON_2024_GAMES,
   EXPECTED_2024_AFC_SEEDINGS,
   EXPECTED_2024_NFC_SEEDINGS,
-  TIEBREAKER_SCENARIOS_2024,
   type CompactGame,
 } from '@/utils/fixtures/season2024';
 import {
   SEASON_2023_GAMES,
   EXPECTED_2023_AFC_SEEDINGS,
   EXPECTED_2023_NFC_SEEDINGS,
-  TIEBREAKER_SCENARIOS_2023,
 } from '@/utils/fixtures/season2023';
 import {
   SEASON_2022_GAMES,
@@ -1384,12 +1382,10 @@ describe('Phase 16: 2022 NFL Season Historical Regression Tests', () => {
 
       let totalWins = 0;
       let totalLosses = 0;
-      let totalTies = 0;
 
       for (const record of records.values()) {
         totalWins += record.wins;
         totalLosses += record.losses;
-        totalTies += record.ties;
       }
 
       // 272 games total but:
@@ -2320,7 +2316,6 @@ describe('Phase 16: 2020 NFL Season Historical Regression Tests', () => {
       // Washington has worse record than wild cards
       const buccaneers = standings.find(s => s.team.id === '28');
       const rams = standings.find(s => s.team.id === '30');
-      const bears = standings.find(s => s.team.id === '21');
       expect(washington!.wins).toBeLessThan(buccaneers!.wins);
       expect(washington!.wins).toBeLessThan(rams!.wins);
       // Bears at 8-8 also have better record than Washington 7-9

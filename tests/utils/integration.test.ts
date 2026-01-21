@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { calculateTeamRecords, calculatePlayoffSeedings } from './tiebreakers';
-import { calculateDraftOrder } from './draftOrder';
+import { calculateTeamRecords, calculatePlayoffSeedings } from '@/utils/tiebreakers';
+import { calculateDraftOrder } from '@/utils/draftOrder';
 import { teams, getTeamsByConference } from '@/data/teams';
 import type { Game, GameSelection, Team, TeamStanding, PlayoffPicks } from '@/types';
 import type { PlayoffGame } from '@/hooks/useEspnApi';

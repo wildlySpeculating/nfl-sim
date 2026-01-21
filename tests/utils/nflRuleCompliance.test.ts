@@ -22,7 +22,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { calculateTeamRecords, calculatePlayoffSeedings, breakTie } from './tiebreakers';
+import { calculateTeamRecords, calculatePlayoffSeedings, breakTie } from '@/utils/tiebreakers';
 import type { Game, GameSelection, Team } from '@/types';
 
 // Helper to create a mock team

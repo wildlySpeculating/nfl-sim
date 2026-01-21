@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { isTeamEliminated, calculateStreak, calculateLastFive, calculateMagicNumber } from './teamPaths';
-import { calculatePlayoffSeedings } from './tiebreakers';
+import { isTeamEliminated, calculateStreak, calculateLastFive, calculateMagicNumber } from '@/utils/teamPaths';
+import { calculatePlayoffSeedings } from '@/utils/tiebreakers';
 import { teams, getTeamsByConference, getTeamsByDivision } from '@/data/teams';
 import type { Game, GameSelection, Team, TeamStanding } from '@/types';
 

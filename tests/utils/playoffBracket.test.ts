@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildBracketFromGames, type TeamWithSeed, type PlayoffPicks } from './playoffBracket';
+import { buildBracketFromGames, type TeamWithSeed, type PlayoffPicks } from '@/utils/playoffBracket';
 import type { PlayoffGame } from '@/hooks/useEspnApi';
 import { getTeamById } from '@/data/teams';
 

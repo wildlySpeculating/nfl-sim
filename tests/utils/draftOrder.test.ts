@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDraftOrder } from './draftOrder';
+import { calculateDraftOrder } from '@/utils/draftOrder';
 import type { TeamStanding, PlayoffPicks, Team, Game } from '@/types';
 import type { PlayoffGame } from '@/hooks/useEspnApi';
 

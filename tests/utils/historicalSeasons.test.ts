@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { calculatePlayoffSeedings, calculateTeamRecords } from './tiebreakers';
+import { calculatePlayoffSeedings, calculateTeamRecords } from '@/utils/tiebreakers';
 import { getTeamByAbbreviation, getTeamsByConference } from '@/data/teams';
 import type { Game, Team } from '@/types';
 import {
@@ -18,28 +18,28 @@ import {
   EXPECTED_2024_NFC_SEEDINGS,
   TIEBREAKER_SCENARIOS_2024,
   type CompactGame,
-} from './fixtures/season2024';
+} from '@/utils/fixtures/season2024';
 import {
   SEASON_2023_GAMES,
   EXPECTED_2023_AFC_SEEDINGS,
   EXPECTED_2023_NFC_SEEDINGS,
   TIEBREAKER_SCENARIOS_2023,
-} from './fixtures/season2023';
+} from '@/utils/fixtures/season2023';
 import {
   SEASON_2022_GAMES,
   EXPECTED_2022_AFC_SEEDINGS,
   EXPECTED_2022_NFC_SEEDINGS,
-} from './fixtures/season2022';
+} from '@/utils/fixtures/season2022';
 import {
   SEASON_2021_GAMES,
   EXPECTED_2021_AFC_SEEDINGS,
   EXPECTED_2021_NFC_SEEDINGS,
-} from './fixtures/season2021';
+} from '@/utils/fixtures/season2021';
 import {
   SEASON_2020_GAMES,
   EXPECTED_2020_AFC_SEEDINGS,
   EXPECTED_2020_NFC_SEEDINGS,
-} from './fixtures/season2020';
+} from '@/utils/fixtures/season2020';
 
 /**
  * Convert compact fixture format to full Game objects

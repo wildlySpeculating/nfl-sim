@@ -12,10 +12,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildBracketFromGames, type TeamWithSeed, type PlayoffPicks } from './playoffBracket';
-import { calculateTeamRecords, calculatePlayoffSeedings, breakTie } from './tiebreakers';
-import { calculateDraftOrder } from './draftOrder';
-import { isTeamEliminated, calculateMagicNumber } from './teamPaths';
+import { buildBracketFromGames, type TeamWithSeed, type PlayoffPicks } from '@/utils/playoffBracket';
+import { calculateTeamRecords, calculatePlayoffSeedings, breakTie } from '@/utils/tiebreakers';
+import { calculateDraftOrder } from '@/utils/draftOrder';
+import { isTeamEliminated, calculateMagicNumber } from '@/utils/teamPaths';
 import type { Game, GameSelection, Team, TeamStanding } from '@/types';
 import type { PlayoffGame } from '@/hooks/useEspnApi';
 import { getTeamById } from '@/data/teams';

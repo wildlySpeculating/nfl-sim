@@ -28,7 +28,7 @@ import {
   type AllGoalsEliminationResult,
   type ClinchResult,
   type ClinchCondition,
-} from './teamNeeds';
+} from '@/utils/teamNeeds';
 
 // Helper to create a mock game
 function createGame(
